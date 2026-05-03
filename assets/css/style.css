@@ -26,6 +26,7 @@ header {
     max-width: 1200px;
     margin: 0 auto;
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
 }
@@ -35,9 +36,14 @@ header {
     width: auto;
 }
 
+nav {
+    margin-left: auto;
+}
+
 nav ul {
     list-style: none;
     display: flex;
+    flex-direction: row;
     gap: 2rem;
 }
 
@@ -61,10 +67,14 @@ main {
 
 /* ===== HOMEPAGE LAYOUT ===== */
 .homepage-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
+    display: flex;
+    flex-direction: row;
     align-items: center;
+    gap: 3rem;
+}
+
+.homepage-text {
+    flex: 1;
 }
 
 .homepage-text h1 {
@@ -81,12 +91,11 @@ main {
 
 /* ===== ARCH FRAME IMAGE ===== */
 .arch-frame {
-    width: 100%;
-    max-width: 400px;
-    aspect-ratio: 932 / 1602;
-    border-radius: 50% 50% 0 0;
+    width: 200px;
+    height: 345px;
+    border-radius: 100px 100px 0 0;
     overflow: hidden;
-    margin: 0 auto;
+    flex-shrink: 0;
 }
 
 .arch-frame img {
@@ -129,7 +138,7 @@ a:hover {
     }
 
     .homepage-container {
-        grid-template-columns: 1fr;
+        flex-direction: column;
         gap: 2rem;
     }
 
