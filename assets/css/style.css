@@ -202,6 +202,31 @@ a:hover {
     display: block;
 }
 
+.gallery-masonry {
+    columns: 2;
+    column-gap: 1.5rem;
+}
+
+.gallery-masonry img {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 1.5rem;
+}
+
+.gallery-stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.gallery-stacked img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
 /* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
     .header-container {
