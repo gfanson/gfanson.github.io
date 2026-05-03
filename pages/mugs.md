@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Mugs
+permalink: /mugs/
 ---
 
 # Mugs
