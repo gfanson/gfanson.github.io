@@ -239,11 +239,20 @@ a:hover {
         grid-template-columns: 1fr;
     }
 
+    .gallery-masonry {
+        columns: 1;
+    }
+
+    .gallery-stacked{
+        max-width: 100%;
+    }
+    
     nav ul {
         gap: 1rem;
         font-size: 0.9rem;
     }
 
+    
     .homepage-container {
         flex-direction: column;
         gap: 2rem;

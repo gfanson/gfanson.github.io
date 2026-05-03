@@ -1,7 +1,7 @@
 <div class="gallery">
     {% for image in site.static_files %}
         {% if image.path contains 'assets/images/Europe/blog2' %}
-            <img src="{{ image.path }}" alt="Mug">
+            <img src="{{ image.path }}" alt="voyage">
         {% endif %}
     {% endfor %}
 </div>
