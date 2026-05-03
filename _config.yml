@@ -1,13 +1,11 @@
 title: Grace Fanson
 description: Personal website
 url: https://gfanson.github.io
-baseurl: /
+baseurl: ""
 
-theme: minima
 plugins:
   - jekyll-feed
 
-# Exclude these from the site
 exclude:
   - .gitignore
   - README.md
