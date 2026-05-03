@@ -1,4 +1,5 @@
-![Packing Hero](assets/images/Europe/blog1.png)
+![Packing Hero](/assets/images/Europe/blog1.png)
+
 UK
 
 7/9
