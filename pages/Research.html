@@ -10,15 +10,19 @@ permalink: /research/
 
 <h2>LPSC 2026</h2>
 
-<div class="video-container">
-    <iframe src="https://www.youtube.com/embed?v=FZc4XCq7K74" 
-            frameborder="0" 
-            allowfullscreen>
-    </iframe>
+
+<div class="video-container" id="video-wrapper" onclick="loadVideo()">
+    <img src="https://img.youtube.com/vi/FZc4XCq7K74/maxresdefault.jpg" alt="Click to play video">
+    <div class="play-button">&#9654;</div>
 </div>
+
+<script>
+function loadVideo() {
+    document.getElementById('video-wrapper').innerHTML = 
+        '<iframe src="https://www.youtube.com/embed?v=FZc4XCq7K74" frameborder="0" allowfullscreen></iframe>';
+}
+</script>
 
 <h2>Poster</h2>
 
-<div class="pdf-container">
-    <iframe src="/assets/pdfs/EAPS Research Day.pdf"></iframe>
-</div>
+<img src="/assets/images/general/EAPS Research Day.png" alt="Poster">
