@@ -256,21 +256,12 @@ a:hover {
 /* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
     .header-container {
-        flex-direction: column;
-        gap: 1rem;
-        
+        flex-direction: row;
+        flex-wrap: wrap;
     }
 
-    .gallery {
-        grid-template-columns: 1fr;
-    }
-
-    .gallery-masonry {
-        columns: 1;
-    }
-
-    .gallery-stacked{
-        max-width: 100%;
+    .logo img {
+        height: 35px;
     }
 
     nav ul {
@@ -278,7 +269,6 @@ a:hover {
         font-size: 0.9rem;
     }
 
-    
     .homepage-container {
         flex-direction: column;
         gap: 2rem;
@@ -292,10 +282,11 @@ a:hover {
         font-size: 1rem;
     }
 
-    .pdf-container iframe {
-        height: 400px;
-    }
     main {
         padding: 2rem 1rem;
+    }
+
+    .gallery-masonry {
+        columns: 1;
     }
 }
