@@ -1,4 +1,10 @@
-![Packing Hero](/assets/images/Europe/blog1.png)
+<div class="gallery">
+    {% for image in site.static_files %}
+        {% if image.path contains 'assets/images/Europe/blog1' %}
+            <img src="{{ image.path }}" alt="Mug">
+        {% endif %}
+    {% endfor %}
+</div>
 
 UK
 

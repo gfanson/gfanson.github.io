@@ -1,6 +1,10 @@
-![Airport](/assets/images/Europe/blog2.1.png)
-
-![Airplane](/assets/images/Europe/blog2.2.png)
+<div class="gallery">
+    {% for image in site.static_files %}
+        {% if image.path contains 'assets/images/Europe/blog2' %}
+            <img src="{{ image.path }}" alt="Mug">
+        {% endif %}
+    {% endfor %}
+</div>
 
 I officially started my trip! I have discovered that the international terminal at Boston Logan is far superior to the domestic terminals. Everything works and it’s clean and comfortable. 
 
