@@ -2,9 +2,42 @@
 layout: default
 ---
 
-<article>
-    <h1>{{ page.title }}</h1>
-    <p><small>{{ page.date | date: "%B %d, %Y" }}</small></p>
+<div id="password-gate">
+    <h1>This post is password protected.</h1>
+    <input type="password" id="password-input" placeholder="Enter password">
+    <button onclick="checkPassword()">Enter</button>
+    <p id="error-message"></p>
+</div>
+
+<div id="post-content" style="display: none;">
+    <article>
+        <h1>{{ page.title }}</h1>
+        <p class="post-date">{{ page.date | date: "%B %d, %Y" }}</p>
+        
+        {{ content }}
+    </article>
     
-    {{ content }}
-</article>
+    <p><a href="/pages/blog.html">← Back to Blog</a></p>
+</div>
+
+<script>
+    function checkPassword() {
+        var password = document.getElementById('password-input').value;
+        if (password === 'YOUR_PASSWORD_HERE') {
+            document.getElementById('password-gate').style.display = 'none';
+            document.getElementById('post-content').style.display = 'block';
+            sessionStorage.setItem('blogAuth', 'true');
+        } else {
+            document.getElementById('error-message').textContent = 'Incorrect password.';
+        }
+    }
+
+    if (sessionStorage.getItem('blogAuth') === 'true') {
+        document.getElementById('password-gate').style.display = 'none';
+        document.getElementById('post-content').style.display = 'block';
+    }
+
+    document.getElementById('password-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') checkPassword();
+    });
+</script>

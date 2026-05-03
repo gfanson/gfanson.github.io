@@ -125,6 +125,58 @@ a:hover {
     opacity: 0.6;
 }
 
+/* ===== BLOG ===== */
+#password-gate {
+    text-align: center;
+    padding: 3rem 0;
+}
+
+#password-input {
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #000;
+    margin-right: 0.5rem;
+}
+
+#password-gate button {
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    padding: 0.5rem 1.5rem;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+#password-gate button:hover {
+    background-color: #333;
+}
+
+#error-message {
+    color: red;
+    margin-top: 1rem;
+}
+
+.post-preview {
+    margin-bottom: 1.5rem;
+}
+
+.post-preview h2 {
+    font-weight: normal;
+}
+
+.post-date {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.post-preview hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin-top: 1.5rem;
+}
+
 /* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
     .header-container {
