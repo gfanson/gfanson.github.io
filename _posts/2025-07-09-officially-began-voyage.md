@@ -1,4 +1,4 @@
-<div class="gallery">
+<div class="gallery-stacked">
     {% for image in site.static_files %}
         {% if image.path contains 'assets/images/Europe/blog2' %}
             <img src="{{ image.path }}" alt="voyage">
