@@ -26,16 +26,6 @@ P.S. Did you read this in a British accent? Because I definitely wrote it in one
 
 ---
 ### Comments
-/* ===== BLOG COMMENTS ===== */
-blockquote {
-    border-left: 4px solid #ddd;
-    margin-left: 0;
-    padding-left: 1rem;
-    color: #555;
-    background-color: #f9f9f9;
-    padding: 0.5rem 1rem;
-    border-radius: 0 5px 5px 0;
-}
 
 **Aunt Sarah Schuppz** — *July 12, 2025*  
 Love the socks!  
