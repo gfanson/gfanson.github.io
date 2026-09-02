@@ -10,6 +10,6 @@ title: Home
     </div>
     
     <div class="arch-frame">
-        <img src="/assets/images/general/homepage.png" alt="Grace Fanson">
+        <img src="/assets/images/general/homepage2.png" alt="Grace Fanson">
     </div>
 </div>
