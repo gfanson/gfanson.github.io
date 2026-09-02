@@ -6,7 +6,7 @@ date: 2025-07-13
 
 <div class="gallery-stacked">
     {% for image in site.static_files %}
-        {% if image.path contains 'assets/images/Europe/blog3' %}
+        {% if image.path contains 'assets/images/Europe/blog3/' %}
             <img src="{{ image.path }}" alt="Hot">
         {% endif %}
     {% endfor %}
