@@ -1,6 +1,6 @@
 <div class="gallery-stacked">
     {% for image in site.static_files %}
-        {% if image.path contains 'assets/images/Europe/blog/' %}
+        {% if image.path contains 'assets/images/Europe/blog1/' %}
             <img src="{{ image.path }}" alt="itinerary">
         {% endif %}
     {% endfor %}
