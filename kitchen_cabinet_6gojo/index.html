@@ -137,6 +137,12 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .gitem.done .cb{background:var(--basil);border-color:var(--basil)}
 .gitem.done .gtext{text-decoration:line-through;color:var(--muted)}
 .gtext b{font-weight:600}
+.arow{display:flex;align-items:center;gap:4px;padding:8px 0;border-bottom:1px solid var(--line)}
+.aname{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ab{width:38px;height:38px;flex:none;border:0;border-radius:10px;background:var(--surface-2);color:var(--ink);font-size:18px;display:grid;place-items:center;padding:0}
+span.ab{background:none}
+.ab[disabled]{opacity:.35}
+.ab.del{color:var(--tomato)}
 .mv{position:relative;width:36px;height:36px;flex:none;display:grid;place-items:center;color:var(--muted);margin-top:4px}
 .mv select{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;padding:0;border:0}
 .gitem .x{margin-top:4px}
@@ -225,7 +231,7 @@ const S = {
   recipes: [],
   grocery: {items: [], extras: [], checked: {}, hidden: {}},
   f: {q: '', cat: '', tag: '', fav: false, sort: 'title'},
-  aisleMap: {}, customAisles: [], cur: null, scale: 1, editing: null, listY: 0, lastView: '', tipHidden: false, importMode: 'merge'
+  aisleMap: {}, aisles: [], cur: null, scale: 1, editing: null, listY: 0, lastView: '', tipHidden: false, importMode: 'merge'
 };
 const byId = id => S.recipes.find(r => r.id === id);
 const cur = () => byId(S.cur);
@@ -327,7 +333,9 @@ function keyOf(t) {
   return w.join(' ');
 }
 const SKIP = /^(water|ice|ice water|hot water|cold water|warm water|boiling water|ice cubes?)$/i;
-const AISLES = ['Produce', 'Meat & fish', 'Dairy & eggs', 'Bakery', 'Pantry', 'Spices', 'Frozen', 'Other'];
+const DEFAULT_AISLES = [{id: 'produce', name: 'Produce'}, {id: 'meat', name: 'Meat & fish'}, {id: 'dairy', name: 'Dairy & eggs'},
+  {id: 'bakery', name: 'Bakery'}, {id: 'pantry', name: 'Pantry'}, {id: 'spices', name: 'Spices'}, {id: 'frozen', name: 'Frozen'}, {id: 'other', name: 'Other'}];
+const RULE_ID = {'Produce': 'produce', 'Meat & fish': 'meat', 'Dairy & eggs': 'dairy', 'Bakery': 'bakery', 'Pantry': 'pantry', 'Spices': 'spices', 'Frozen': 'frozen'};
 const AISLE_RULES = [
   ['Frozen', /\bfrozen\b/],
   ['Pantry', /coconut milk|tomato (paste|sauce|puree|purée)|canned|\bcans?\b|baking (powder|soda)|cocoa|peanut butter|broth|stock\b|bouillon|soy sauce|fish sauce|hot sauce|worcestershire|sriracha|tahini|miso|almond milk|oat milk|chocolate/],
@@ -340,13 +348,36 @@ const AISLE_RULES = [
 ];
 function guessAisle(t) {
   const s = t.toLowerCase();
-  for (const [a, re] of AISLE_RULES) if (re.test(s)) return a;
-  return 'Other';
+  for (const [a, re] of AISLE_RULES) if (re.test(s)) return RULE_ID[a];
+  return 'other';
 }
 /*PARSE-END*/
-const allAisles = () => [...AISLES.slice(0, -1), ...S.customAisles, 'Other'];
-const aisleFor = (ak, name) => { const a = S.aisleMap[ak]; return a && allAisles().includes(a) ? a : guessAisle(name); };
-async function saveAisles() { try { await kvSet('aisles', {map: S.aisleMap, custom: S.customAisles}); } catch (e) {} }
+/* aisles: an ordered list of {id, name}; built-in ids come from the keyword rules, custom ones are random */
+const hasAisle = id => S.aisles.some(a => a.id === id);
+const aisleName = id => (S.aisles.find(a => a.id === id) || {name: 'Other'}).name;
+function aisleFor(ak, name) {
+  const m = S.aisleMap[ak]; if (m && hasAisle(m)) return m;
+  const g = guessAisle(name); return hasAisle(g) ? g : 'other';
+}
+function ensureOther() { if (!hasAisle('other')) S.aisles.push({id: 'other', name: 'Other'}); }
+function readAisles(raw) {
+  if (raw && raw.v === 2 && Array.isArray(raw.list)) {
+    const list = raw.list.filter(a => a && a.id && a.name).map(a => ({id: String(a.id), name: String(a.name).trim()}));
+    const map = {};
+    for (const [k, v] of Object.entries(raw.map || {})) if (typeof v === 'string') map[k] = v;
+    return {list, map};
+  }
+  // older format: custom aisle names plus a map of ingredient to aisle name
+  const list = DEFAULT_AISLES.map(a => ({...a}));
+  const byName = n => list.find(a => a.name.toLowerCase() === n.toLowerCase());
+  for (const c of raw && Array.isArray(raw.custom) ? raw.custom : [])
+    if (typeof c === 'string' && c.trim() && !byName(c.trim())) list.splice(list.length - 1, 0, {id: uid(), name: c.trim()});
+  const map = {};
+  for (const [k, v] of Object.entries((raw && raw.map) || {})) { const a = typeof v === 'string' && byName(v); if (a) map[k] = a.id; }
+  return {list, map};
+}
+const aislesData = () => ({v: 2, list: S.aisles, map: S.aisleMap});
+async function saveAisles() { ensureOther(); try { await kvSet('aisles', aislesData()); } catch (e) {} }
 
 /* ---------- helpers ---------- */
 function toast(msg) {
@@ -405,13 +436,14 @@ function render() {
   closeViewer();
   const [v, rawId] = location.hash.replace(/^#\/?/, '').split('/');
   const id = rawId ? decodeURIComponent(rawId) : '';
-  const view = v === 'r' ? 'detail' : v === 'edit' || v === 'new' ? 'edit' : v === 'grocery' ? 'grocery' : v === 'backup' ? 'backup' : 'list';
+  const view = v === 'aisles' ? 'aisles' : v === 'r' ? 'detail' : v === 'edit' || v === 'new' ? 'edit' : v === 'grocery' ? 'grocery' : v === 'backup' ? 'backup' : 'list';
   if (S.lastView === 'list') S.listY = window.scrollY;
   document.querySelectorAll('.tabs a').forEach(a =>
-    a.classList.toggle('on', a.dataset.tab === (view === 'grocery' ? 'grocery' : view === 'backup' ? 'backup' : 'recipes')));
+    a.classList.toggle('on', a.dataset.tab === (view === 'grocery' || view === 'aisles' ? 'grocery' : view === 'backup' ? 'backup' : 'recipes')));
   if (view === 'detail') viewDetail(id);
   else if (view === 'edit') viewEdit(v === 'new' ? null : id);
   else if (view === 'grocery') viewGrocery();
+  else if (view === 'aisles') viewAisles();
   else if (view === 'backup') viewBackup();
   else viewList();
   window.scrollTo(0, view === 'list' && S.lastView === 'detail' ? S.listY : 0);
@@ -679,7 +711,7 @@ function updateBadge() {
 }
 function viewGrocery() {
   const has = S.grocery.items.length || S.grocery.extras.length;
-  setTop('', 'Grocery list', has ? '<button class="tb" data-act="gshare">Share</button>' : '');
+  setTop('<a class="tb" href="#/aisles">Aisles</a>', 'Grocery list', has ? '<button class="tb" data-act="gshare">Share</button>' : '');
   drawGrocery();
 }
 function drawGrocery() {
@@ -699,10 +731,10 @@ function drawGrocery() {
         <div class="stepper sm"><button data-act="gscale" data-rid="${esc(r.id)}" data-d="-1" aria-label="Fewer">−</button><span>${servingsLabel(r, it.scale || 1)}</span><button data-act="gscale" data-rid="${esc(r.id)}" data-d="1" aria-label="More">+</button></div>
         <button class="x" data-act="gremove" data-rid="${esc(r.id)}" aria-label="Remove ${esc(r.title)} from list">×</button></div>`).join('')}</div>` : ''}
       ${addRow}
-      ${allAisles().map(a => {
-        const items = rows.filter(i => i.aisle === a).sort((x, y) => (done(x) - done(y)) || cmp(x.name, y.name));
+      ${S.aisles.map(a => {
+        const items = rows.filter(i => i.aisle === a.id).sort((x, y) => (done(x) - done(y)) || cmp(x.name, y.name));
         if (!items.length) return '';
-        return `<section class="aisle"><h4>${a}</h4>${items.map(i => `<div class="gitem${done(i) ? ' done' : ''}">
+        return `<section class="aisle"><h4>${esc(a.name)}</h4>${items.map(i => `<div class="gitem${done(i) ? ' done' : ''}">
           <button class="gcheck" data-act="gcheck" data-k="${esc(i.key)}" aria-pressed="${done(i)}"><span class="cb">${done(i) ? CHECK : ''}</span>
           <span class="gtext">${i.amount ? `<b>${esc(i.amount)}</b> ` : ''}${esc(i.name)}${multi && i.from.length ? `<span class="gfrom">${esc(i.from.join(', '))}</span>` : ''}</span></button>
           ${moveSelect(i)}
@@ -717,22 +749,69 @@ function drawGrocery() {
 const MOVE_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 7.5L7 4l3.5 3.5M17 20V4M13.5 16.5L17 20l3.5-3.5"/></svg>';
 function moveSelect(i) {
   return `<label class="mv" title="Change aisle">${MOVE_ICON}<select class="mvsel" data-ak="${esc(i.ak)}" data-name="${esc(i.name)}" aria-label="Change aisle for ${esc(i.name)}">
-    ${allAisles().map(a => `<option value="${esc(a)}"${a === i.aisle ? ' selected' : ''}>${esc(a)}</option>`).join('')}
+    ${S.aisles.map(a => `<option value="${esc(a.id)}"${a.id === i.aisle ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}
     <option value="__new">New aisle…</option></select></label>`;
 }
 document.addEventListener('change', async e => {
   const sel = e.target.closest('select.mvsel'); if (!sel) return;
-  let a = sel.value; const {ak, name} = sel.dataset;
-  if (a === '__new') {
-    a = (prompt('Name the new aisle (for example, “Asian market” or “Bulk bins”):') || '').trim();
-    if (!a) { drawGrocery(); return; }
-    const existing = allAisles().find(x => x.toLowerCase() === a.toLowerCase());
-    if (existing) a = existing; else S.customAisles.push(a);
+  let id = sel.value; const {ak, name} = sel.dataset;
+  if (id === '__new') {
+    id = newAisle(); if (!id) { drawGrocery(); return; }
   }
-  if (a === guessAisle(name)) delete S.aisleMap[ak]; else S.aisleMap[ak] = a;
+  if (id === guessAisle(name)) delete S.aisleMap[ak]; else S.aisleMap[ak] = id;
   await saveAisles(); drawGrocery();
-  toast(`${name} will go in ${a} from now on.`);
+  toast(`${name} will go in ${aisleName(id)} from now on.`);
 });
+function newAisle() {
+  const n = (prompt('Name the new aisle (for example, “Asian market” or “Bulk bins”):') || '').trim();
+  if (!n) return null;
+  const ex = S.aisles.find(a => a.name.toLowerCase() === n.toLowerCase());
+  if (ex) return ex.id;
+  const a = {id: uid(), name: n}, oi = S.aisles.findIndex(x => x.id === 'other');
+  S.aisles.splice(oi < 0 ? S.aisles.length : oi, 0, a);
+  return a.id;
+}
+
+/* ---------- aisle order and names ---------- */
+const ICON_PEN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+const ICON_TRASH = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+function viewAisles() {
+  setTop('<a class="tb" href="#/grocery">‹ Grocery</a>', 'Aisles', '<button class="tb strong" data-act="aadd">Add</button>');
+  drawAisles();
+}
+function drawAisles() {
+  const n = S.aisles.length;
+  appEl.innerHTML = `<p class="muted small" style="margin:4px 0 6px">Put these in the order you walk through your store. The grocery list follows this order.</p>
+    <div>${S.aisles.map((a, i) => `<div class="arow">
+      <div class="aname">${esc(a.name)}</div>
+      <button class="ab" data-act="amove" data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move ${esc(a.name)} up">↑</button>
+      <button class="ab" data-act="amove" data-i="${i}" data-d="1" ${i === n - 1 ? 'disabled' : ''} aria-label="Move ${esc(a.name)} down">↓</button>
+      <button class="ab" data-act="aren" data-i="${i}" aria-label="Rename ${esc(a.name)}">${ICON_PEN}</button>
+      ${a.id === 'other' ? '<span class="ab"></span>' : `<button class="ab del" data-act="adel" data-i="${i}" aria-label="Delete ${esc(a.name)}">${ICON_TRASH}</button>`}
+    </div>`).join('')}</div>
+    <p class="hint" style="margin-top:12px">“${esc(aisleName('other'))}” can be renamed or moved but not deleted, since it catches anything without an aisle.</p>
+    <button class="btn sec" data-act="areset" style="margin-top:20px">Reset to the original aisles</button>`;
+}
+async function aisleAction(act, i) {
+  const a = S.aisles[i];
+  if (act === 'aadd') { if (!newAisle()) return; }
+  else if (act === 'aren') {
+    const n = (prompt('Rename this aisle:', a.name) || '').trim();
+    if (!n || n === a.name) return;
+    if (S.aisles.some(x => x !== a && x.name.toLowerCase() === n.toLowerCase())) { toast(`There’s already an aisle called ${n}.`); return; }
+    a.name = n;
+  } else if (act === 'adel') {
+    if (!confirm(`Delete “${a.name}”? Its items will go back to their usual aisle, or to ${aisleName('other')}.`)) return;
+    S.aisles.splice(i, 1);
+    for (const k of Object.keys(S.aisleMap)) if (S.aisleMap[k] === a.id) delete S.aisleMap[k];
+  } else if (act === 'areset') {
+    if (!confirm('Reset to the original aisles? Custom aisles are removed and items go back to their usual aisles.')) return;
+    S.aisles = DEFAULT_AISLES.map(x => ({...x}));
+    for (const k of Object.keys(S.aisleMap)) if (!hasAisle(S.aisleMap[k])) delete S.aisleMap[k];
+  }
+  await saveAisles(); drawAisles(); updateBadge();
+}
+
 function addExtra() {
   const el = $('#gx'), t = el.value.trim(); if (!t) return;
   S.grocery.extras.push({id: uid(), text: t}); saveGrocery(); drawGrocery(); $('#gx').focus();
@@ -740,9 +819,9 @@ function addExtra() {
 function groceryText() {
   const rows = visibleRows().filter(i => !S.grocery.checked[i.key]);
   const out = ['Grocery list'];
-  for (const a of allAisles()) {
-    const items = rows.filter(i => i.aisle === a).sort((x, y) => cmp(x.name, y.name));
-    if (items.length) out.push('', a, ...items.map(i => '- ' + (i.amount ? i.amount + ' ' : '') + i.name));
+  for (const a of S.aisles) {
+    const items = rows.filter(i => i.aisle === a.id).sort((x, y) => cmp(x.name, y.name));
+    if (items.length) out.push('', a.name, ...items.map(i => '- ' + (i.amount ? i.amount + ' ' : '') + i.name));
   }
   return out.join('\n');
 }
@@ -774,7 +853,12 @@ async function importRecipes(list, mode, data) {
     const ex = mode === 'merge' && raw.id != null ? byId(String(raw.id)) : null;
     if (ex) {
       const m = {...ex};
-      for (const k of FIELDS) if (k in raw && !(k === 'photos' && !n.photos.length)) m[k] = n[k];
+      for (const k of FIELDS) {
+        if (!(k in raw)) continue;
+        if (k === 'photos') m.photos = [...ex.photos, ...n.photos.filter(p => !ex.photos.some(q => q.id === p.id))];
+        else if (k === 'made') m.made = [...new Set([...ex.made, ...n.made])].sort((x, y) => x - y);
+        else m[k] = n[k];
+      }
       m.updated = Date.now(); out.push(m); updated++;
     } else { out.push(n); added++; }
   }
@@ -790,10 +874,17 @@ async function importRecipes(list, mode, data) {
     for (const r of out) { const i = S.recipes.findIndex(x => x.id === r.id); if (i >= 0) S.recipes[i] = r; else S.recipes.push(r); }
   }
   if (data && data.aisles && typeof data.aisles === 'object') {
-    const m = data.aisles.map && typeof data.aisles.map === 'object' ? data.aisles.map : {};
-    for (const [k, v] of Object.entries(m)) if (typeof v === 'string' && v.trim()) S.aisleMap[k] = v.trim();
-    for (const c of Array.isArray(data.aisles.custom) ? data.aisles.custom : [])
-      if (typeof c === 'string' && c.trim() && !allAisles().some(x => x.toLowerCase() === c.trim().toLowerCase())) S.customAisles.push(c.trim());
+    const inc = readAisles(data.aisles);
+    if (mode === 'replace') { S.aisles = inc.list; S.aisleMap = inc.map; }
+    else {
+      const remap = {};
+      for (const a of inc.list) {
+        const same = S.aisles.find(x => x.id === a.id) || S.aisles.find(x => x.name.toLowerCase() === a.name.toLowerCase());
+        if (same) { remap[a.id] = same.id; if (same.id === a.id) same.name = a.name; }
+        else { const oi = S.aisles.findIndex(x => x.id === 'other'); S.aisles.splice(oi < 0 ? S.aisles.length : oi, 0, a); remap[a.id] = a.id; }
+      }
+      for (const [k, v] of Object.entries(inc.map)) if (remap[v]) S.aisleMap[k] = remap[v];
+    }
     await saveAisles();
   }
   requestPersist();
@@ -821,7 +912,7 @@ $('#importInput').addEventListener('change', async e => {
 function backupData(withPhotos) {
   return {app: 'recipe-box', version: 1, exported: new Date().toISOString(),
     recipes: S.recipes.map(r => { if (withPhotos) return r; const {photos, ...rest} = r; return rest; }),
-    aisles: {map: S.aisleMap, custom: S.customAisles},
+    aisles: aislesData(),
     ...(withPhotos ? {grocery: S.grocery} : {})};
 }
 async function exportFile(withPhotos) {
@@ -882,7 +973,7 @@ function viewBackup() {
   const bytes = S.recipes.reduce((a, r) => a + JSON.stringify(r).length, 0);
   appEl.innerHTML = `
     <div class="panel"><h2>On this phone</h2><p>${n} recipe${n === 1 ? '' : 's'} and ${nPhotos} photo${nPhotos === 1 ? '' : 's'}, about ${fmtBytes(bytes)}. Everything stays on this device. Nothing is uploaded.</p><p id="persist" class="small" style="margin:0"></p></div>
-    <div class="panel"><h2>Back up</h2><p>Saves recipes, photos, and the grocery list in one file. On iPhone, choose “Save to Files” and keep it in iCloud Drive. Do this now and then, and always before switching phones.</p>
+    <div class="panel"><h2>Back up and share</h2><p>Saves recipes, photos, aisles, and the grocery list in one file. Choose “Save to Files” and keep it in iCloud Drive. To share with your partner, save it to a shared iCloud Drive folder; they open the app and tap “Import a file.”</p>
       <button class="btn" data-act="exfull">Export full backup</button>
       <div class="row"><button class="btn sec" data-act="exlite">Export without photos</button><button class="btn sec" data-act="excopy">Copy recipes as text</button></div>
       <p class="hint">“Copy recipes as text” is handy for pasting into a chat to reorganize tags and categories. When you import the result, your photos and cooking history stay put.</p></div>
@@ -954,6 +1045,9 @@ document.addEventListener('click', async e => {
     case 'ghide': S.grocery.hidden[b.dataset.k] = true; delete S.grocery.checked[b.dataset.k]; await saveGrocery(); drawGrocery(); toast('Removed. Put it back from the bottom of the list.'); break;
     case 'gunhide': S.grocery.hidden = {}; await saveGrocery(); drawGrocery(); break;
     case 'gxadd': addExtra(); break;
+    case 'aadd': case 'aren': case 'adel': case 'areset': aisleAction(act, +b.dataset.i); break;
+    case 'amove': { const i = +b.dataset.i, j = i + +b.dataset.d; if (j < 0 || j >= S.aisles.length) break;
+      [S.aisles[i], S.aisles[j]] = [S.aisles[j], S.aisles[i]]; await saveAisles(); drawAisles(); } break;
     case 'gxdel': S.grocery.extras = S.grocery.extras.filter(x => x.id !== b.dataset.id); delete S.grocery.checked['x:' + b.dataset.id]; await saveGrocery(); viewGrocery(); break;
     case 'guncheck': S.grocery.checked = {}; await saveGrocery(); drawGrocery(); break;
     case 'gclear': if (confirm('Clear the whole grocery list?')) { S.grocery = {items: [], extras: [], checked: {}, hidden: {}}; await saveGrocery(); viewGrocery(); } break;
@@ -983,7 +1077,7 @@ window.addEventListener('hashchange', render);
     if (g) S.grocery = {items: g.items || [], extras: g.extras || [], checked: g.checked || {}, hidden: g.hidden || {}};
     S.tipHidden = !!(await kvGet('tipHidden'));
     const al = await kvGet('aisles');
-    if (al) { S.aisleMap = al.map || {}; S.customAisles = al.custom || []; }
+    { const r = readAisles(al); S.aisles = r.list; S.aisleMap = r.map; ensureOther(); }
   } catch (e) {
     setTop('', 'Recipe Box', '');
     appEl.innerHTML = '<div class="empty"><div class="big">⚠️</div><h2>Storage isn’t available</h2><p>This browser blocked on-device storage. Turn off Private Browsing, or open this page in Safari, and try again.</p></div>';
