@@ -137,6 +137,9 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .gitem.done .cb{background:var(--basil);border-color:var(--basil)}
 .gitem.done .gtext{text-decoration:line-through;color:var(--muted)}
 .gtext b{font-weight:600}
+.mv{position:relative;width:36px;height:36px;flex:none;display:grid;place-items:center;color:var(--muted);margin-top:4px}
+.mv select{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;padding:0;border:0}
+.gitem .x{margin-top:4px}
 .gfrom{display:block;font-size:12px;color:var(--muted);margin-top:2px;text-decoration:none}
 
 /* backup */
@@ -220,9 +223,9 @@ function dbWriteMany(list, clearFirst) {
 
 const S = {
   recipes: [],
-  grocery: {items: [], extras: [], checked: {}},
+  grocery: {items: [], extras: [], checked: {}, hidden: {}},
   f: {q: '', cat: '', tag: '', fav: false, sort: 'title'},
-  cur: null, scale: 1, editing: null, listY: 0, lastView: '', tipHidden: false, importMode: 'merge'
+  aisleMap: {}, customAisles: [], cur: null, scale: 1, editing: null, listY: 0, lastView: '', tipHidden: false, importMode: 'merge'
 };
 const byId = id => S.recipes.find(r => r.id === id);
 const cur = () => byId(S.cur);
@@ -341,6 +344,9 @@ function guessAisle(t) {
   return 'Other';
 }
 /*PARSE-END*/
+const allAisles = () => [...AISLES.slice(0, -1), ...S.customAisles, 'Other'];
+const aisleFor = (ak, name) => { const a = S.aisleMap[ak]; return a && allAisles().includes(a) ? a : guessAisle(name); };
+async function saveAisles() { try { await kvSet('aisles', {map: S.aisleMap, custom: S.customAisles}); } catch (e) {} }
 
 /* ---------- helpers ---------- */
 function toast(msg) {
@@ -648,7 +654,7 @@ function buildGrocery() {
       if (!name || SKIP.test(name)) continue;
       const k = keyOf(name);
       let g = groups.get(k);
-      if (!g) { g = {key: k, name: cap(name), aisle: guessAisle(name), parts: new Map(), from: new Set()}; groups.set(k, g); }
+      if (!g) { g = {key: k, name: cap(name), aisle: aisleFor(k, name), parts: new Map(), from: new Set()}; groups.set(k, g); }
       g.from.add(r.title);
       if (p.hasQty) {
         const pt = g.parts.get(p.unit) || {q: 0, h: 0, range: false};
@@ -658,16 +664,17 @@ function buildGrocery() {
     }
   }
   return [...groups.values()].map(g => ({
-    key: g.key, name: g.name, aisle: g.aisle, from: [...g.from],
+    key: g.key, name: g.name, ak: g.key, aisle: g.aisle, from: [...g.from],
     amount: [...g.parts].map(([u, pt]) => WHOLE.has(u) ? amountText(Math.ceil(pt.q - 0.01), pt.range ? Math.ceil(pt.h - 0.01) : null, u) : amountText(pt.q, pt.range ? pt.h : null, u)).join(' + ')
   }));
 }
 function groceryRows() {
-  return [...buildGrocery(), ...S.grocery.extras.map(e => ({key: 'x:' + e.id, name: cap(e.text), aisle: guessAisle(e.text), amount: '', from: [], extra: e.id}))];
+  return [...buildGrocery(), ...S.grocery.extras.map(e => { const ak = keyOf(cleanItem(e.text)); return {key: 'x:' + e.id, ak, name: cap(e.text), aisle: aisleFor(ak, e.text), amount: '', from: [], extra: e.id}; })];
 }
+const visibleRows = () => groceryRows().filter(i => !S.grocery.hidden[i.key]);
 function updateBadge() {
   const b = $('#gbadge'); if (!b) return;
-  const n = groceryRows().filter(i => !S.grocery.checked[i.key]).length;
+  const n = visibleRows().filter(i => !S.grocery.checked[i.key]).length;
   b.textContent = n; b.hidden = !n;
 }
 function viewGrocery() {
@@ -678,7 +685,9 @@ function viewGrocery() {
 function drawGrocery() {
   const g = S.grocery;
   const recs = g.items.map(it => ({it, r: byId(it.rid)})).filter(x => x.r);
-  const rows = groceryRows();
+  const all = groceryRows(), keys = new Set(all.map(i => i.key));
+  for (const k of Object.keys(g.hidden)) if (!keys.has(k)) delete g.hidden[k];
+  const rows = all.filter(i => !g.hidden[i.key]), nHidden = all.length - rows.length;
   const addRow = `<div class="addrow"><input id="gx" placeholder="Add an item, like paper towels" enterkeyhint="done"><button class="btn small" data-act="gxadd">Add</button></div>`;
   if (!rows.length && !recs.length) {
     appEl.innerHTML = `<div class="empty"><div class="big">🧺</div><h2>Nothing on the list</h2><p>Open a recipe and tap “Add to grocery list,” or add items here.</p></div>` + addRow;
@@ -690,26 +699,48 @@ function drawGrocery() {
         <div class="stepper sm"><button data-act="gscale" data-rid="${esc(r.id)}" data-d="-1" aria-label="Fewer">−</button><span>${servingsLabel(r, it.scale || 1)}</span><button data-act="gscale" data-rid="${esc(r.id)}" data-d="1" aria-label="More">+</button></div>
         <button class="x" data-act="gremove" data-rid="${esc(r.id)}" aria-label="Remove ${esc(r.title)} from list">×</button></div>`).join('')}</div>` : ''}
       ${addRow}
-      ${AISLES.map(a => {
+      ${allAisles().map(a => {
         const items = rows.filter(i => i.aisle === a).sort((x, y) => (done(x) - done(y)) || cmp(x.name, y.name));
         if (!items.length) return '';
         return `<section class="aisle"><h4>${a}</h4>${items.map(i => `<div class="gitem${done(i) ? ' done' : ''}">
           <button class="gcheck" data-act="gcheck" data-k="${esc(i.key)}" aria-pressed="${done(i)}"><span class="cb">${done(i) ? CHECK : ''}</span>
           <span class="gtext">${i.amount ? `<b>${esc(i.amount)}</b> ` : ''}${esc(i.name)}${multi && i.from.length ? `<span class="gfrom">${esc(i.from.join(', '))}</span>` : ''}</span></button>
-          ${i.extra ? `<button class="x" data-act="gxdel" data-id="${esc(i.extra)}" aria-label="Remove item">×</button>` : ''}</div>`).join('')}</section>`;
+          ${moveSelect(i)}
+          ${i.extra ? `<button class="x" data-act="gxdel" data-id="${esc(i.extra)}" aria-label="Remove ${esc(i.name)}">×</button>`
+            : `<button class="x" data-act="ghide" data-k="${esc(i.key)}" aria-label="Remove ${esc(i.name)}, already have it">×</button>`}</div>`).join('')}</section>`;
       }).join('')}
+      ${nHidden ? `<p class="muted small" style="margin-top:18px">${nHidden} item${nHidden === 1 ? '' : 's'} removed because you already have ${nHidden === 1 ? 'it' : 'them'}. <button class="linkbtn" data-act="gunhide">Put back on list</button></p>` : ''}
       <div class="row" style="margin-top:22px"><button class="btn sec" data-act="guncheck">Uncheck all</button><button class="btn danger" data-act="gclear">Clear list</button></div>`;
   }
   $('#gx').addEventListener('keydown', e => { if (e.key === 'Enter') addExtra(); });
 }
+const MOVE_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 7.5L7 4l3.5 3.5M17 20V4M13.5 16.5L17 20l3.5-3.5"/></svg>';
+function moveSelect(i) {
+  return `<label class="mv" title="Change aisle">${MOVE_ICON}<select class="mvsel" data-ak="${esc(i.ak)}" data-name="${esc(i.name)}" aria-label="Change aisle for ${esc(i.name)}">
+    ${allAisles().map(a => `<option value="${esc(a)}"${a === i.aisle ? ' selected' : ''}>${esc(a)}</option>`).join('')}
+    <option value="__new">New aisle…</option></select></label>`;
+}
+document.addEventListener('change', async e => {
+  const sel = e.target.closest('select.mvsel'); if (!sel) return;
+  let a = sel.value; const {ak, name} = sel.dataset;
+  if (a === '__new') {
+    a = (prompt('Name the new aisle (for example, “Asian market” or “Bulk bins”):') || '').trim();
+    if (!a) { drawGrocery(); return; }
+    const existing = allAisles().find(x => x.toLowerCase() === a.toLowerCase());
+    if (existing) a = existing; else S.customAisles.push(a);
+  }
+  if (a === guessAisle(name)) delete S.aisleMap[ak]; else S.aisleMap[ak] = a;
+  await saveAisles(); drawGrocery();
+  toast(`${name} will go in ${a} from now on.`);
+});
 function addExtra() {
   const el = $('#gx'), t = el.value.trim(); if (!t) return;
   S.grocery.extras.push({id: uid(), text: t}); saveGrocery(); drawGrocery(); $('#gx').focus();
 }
 function groceryText() {
-  const rows = groceryRows().filter(i => !S.grocery.checked[i.key]);
+  const rows = visibleRows().filter(i => !S.grocery.checked[i.key]);
   const out = ['Grocery list'];
-  for (const a of AISLES) {
+  for (const a of allAisles()) {
     const items = rows.filter(i => i.aisle === a).sort((x, y) => cmp(x.name, y.name));
     if (items.length) out.push('', a, ...items.map(i => '- ' + (i.amount ? i.amount + ' ' : '') + i.name));
   }
@@ -751,12 +782,19 @@ async function importRecipes(list, mode, data) {
     await dbWriteMany(out, true);
     S.recipes = out;
     if (data && data.grocery && Array.isArray(data.grocery.items)) {
-      S.grocery = {items: data.grocery.items, extras: data.grocery.extras || [], checked: data.grocery.checked || {}};
+      S.grocery = {items: data.grocery.items, extras: data.grocery.extras || [], checked: data.grocery.checked || {}, hidden: data.grocery.hidden || {}};
     } else S.grocery.items = S.grocery.items.filter(i => byId(i.rid));
     await saveGrocery();
   } else {
     await dbWriteMany(out, false);
     for (const r of out) { const i = S.recipes.findIndex(x => x.id === r.id); if (i >= 0) S.recipes[i] = r; else S.recipes.push(r); }
+  }
+  if (data && data.aisles && typeof data.aisles === 'object') {
+    const m = data.aisles.map && typeof data.aisles.map === 'object' ? data.aisles.map : {};
+    for (const [k, v] of Object.entries(m)) if (typeof v === 'string' && v.trim()) S.aisleMap[k] = v.trim();
+    for (const c of Array.isArray(data.aisles.custom) ? data.aisles.custom : [])
+      if (typeof c === 'string' && c.trim() && !allAisles().some(x => x.toLowerCase() === c.trim().toLowerCase())) S.customAisles.push(c.trim());
+    await saveAisles();
   }
   requestPersist();
   return {added, updated};
@@ -783,6 +821,7 @@ $('#importInput').addEventListener('change', async e => {
 function backupData(withPhotos) {
   return {app: 'recipe-box', version: 1, exported: new Date().toISOString(),
     recipes: S.recipes.map(r => { if (withPhotos) return r; const {photos, ...rest} = r; return rest; }),
+    aisles: {map: S.aisleMap, custom: S.customAisles},
     ...(withPhotos ? {grocery: S.grocery} : {})};
 }
 async function exportFile(withPhotos) {
@@ -912,10 +951,12 @@ document.addEventListener('click', async e => {
       if (it && x) { it.scale = stepScale(x, it.scale || 1, +b.dataset.d); await saveGrocery(); drawGrocery(); }
     } break;
     case 'gremove': S.grocery.items = S.grocery.items.filter(i => i.rid !== b.dataset.rid); await saveGrocery(); viewGrocery(); break;
+    case 'ghide': S.grocery.hidden[b.dataset.k] = true; delete S.grocery.checked[b.dataset.k]; await saveGrocery(); drawGrocery(); toast('Removed. Put it back from the bottom of the list.'); break;
+    case 'gunhide': S.grocery.hidden = {}; await saveGrocery(); drawGrocery(); break;
     case 'gxadd': addExtra(); break;
     case 'gxdel': S.grocery.extras = S.grocery.extras.filter(x => x.id !== b.dataset.id); delete S.grocery.checked['x:' + b.dataset.id]; await saveGrocery(); viewGrocery(); break;
     case 'guncheck': S.grocery.checked = {}; await saveGrocery(); drawGrocery(); break;
-    case 'gclear': if (confirm('Clear the whole grocery list?')) { S.grocery = {items: [], extras: [], checked: {}}; await saveGrocery(); viewGrocery(); } break;
+    case 'gclear': if (confirm('Clear the whole grocery list?')) { S.grocery = {items: [], extras: [], checked: {}, hidden: {}}; await saveGrocery(); viewGrocery(); } break;
     case 'gshare': {
       const text = groceryText();
       if (navigator.share) { try { await navigator.share({text}); } catch (err) {} }
@@ -939,14 +980,17 @@ window.addEventListener('hashchange', render);
     db = await openDB();
     S.recipes = (await dbAll()).map(r => ({...normalizeRecipe(r), created: r.created || Date.now(), updated: r.updated || Date.now()}));
     const g = await kvGet('grocery');
-    if (g) S.grocery = {items: g.items || [], extras: g.extras || [], checked: g.checked || {}};
+    if (g) S.grocery = {items: g.items || [], extras: g.extras || [], checked: g.checked || {}, hidden: g.hidden || {}};
     S.tipHidden = !!(await kvGet('tipHidden'));
+    const al = await kvGet('aisles');
+    if (al) { S.aisleMap = al.map || {}; S.customAisles = al.custom || []; }
   } catch (e) {
     setTop('', 'Recipe Box', '');
     appEl.innerHTML = '<div class="empty"><div class="big">⚠️</div><h2>Storage isn’t available</h2><p>This browser blocked on-device storage. Turn off Private Browsing, or open this page in Safari, and try again.</p></div>';
     return;
   }
   render();
+  if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
 </body>
