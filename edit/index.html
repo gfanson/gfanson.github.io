@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Site Editor">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
+<title>Site Editor</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<!--
+  Phone editor for gracefanson.com.
+  It talks straight to GitHub: every Save / Publish is a commit to the main branch,
+  of the private source repo, and its GitHub Actions workflow rebuilds the site. The GitHub token is stored only in
+  this browser (localStorage) and is never part of this file, so this page can be public.
+-->
+<style>
+:root{
+  --bg:#ffffff; --surface:#f6f5f2; --surface-2:#ecebe6; --ink:#161616; --muted:#6b6b6b; --line:#dddcd6;
+  --accent:#161616; --on-accent:#ffffff; --danger:#b3261e; --ok:#2e6b3a;
+  --serif:'EB Garamond',Garamond,'Iowan Old Style',Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#141414; --surface:#1e1e1e; --surface-2:#2a2a2a; --ink:#f1efe9; --muted:#a3a19b; --line:#33322f;
+    --accent:#f1efe9; --on-accent:#141414; --danger:#ff8a80; --ok:#8fd19e;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--sans);-webkit-tap-highlight-color:transparent;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+a{color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px;min-height:52px}
+.top h1{font:600 1.45rem/1.1 var(--serif);margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.back{background:none;border:0;padding:6px 8px 6px 0;font-size:1rem;color:var(--muted)}
+
+main{max-width:680px;margin:0 auto;padding:16px}
+section > * + *{margin-top:14px}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bg);border-top:1px solid var(--line);
+  display:flex;padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.tabs button{flex:1;background:none;border:0;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:.72rem;color:var(--muted)}
+.tabs button svg{width:24px;height:24px}
+.tabs button[aria-current="true"]{color:var(--ink);font-weight:600}
+
+label.field{display:block}
+label.field > span{display:block;font-size:.8rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+input[type=text],input[type=password],input[type=date],input[type=search],textarea{
+  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px}
+input.title{font:600 1.5rem/1.2 var(--serif);padding:10px 12px}
+select{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px;-webkit-appearance:none;appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+input[type=date]{min-height:46px;display:block;min-width:0;-webkit-appearance:none;appearance:none;text-align:left}
+label.check{display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-size:.95rem}
+label.check input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--accent);flex:none}
+textarea{min-height:240px;resize:vertical;line-height:1.55}
+textarea.code{font:14px/1.5 var(--mono);min-height:60vh;white-space:pre;overflow-wrap:normal;overflow-x:auto;tab-size:4}
+@supports (-webkit-touch-callout:none){ textarea.code{font-size:16px} }
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);
+  border-radius:10px;padding:10px 14px;font-size:.95rem;text-decoration:none;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
+.btn.big{width:100%;padding:14px;font-size:1.05rem}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.spread{justify-content:space-between}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.serif{font-family:var(--serif)}
+
+.toolbar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.toolbar button{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:40px;height:36px;padding:0 10px}
+.toolbar .sp{flex:1}
+.toolbar button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--surface-2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .n{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem;border-radius:6px;padding:1px 6px}
+.thumb .ctl{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;
+  background:linear-gradient(transparent,rgba(0,0,0,.55));padding:14px 2px 2px}
+.thumb .ctl button{background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:6px;width:30px;height:28px;font-size:.9rem}
+.thumb .x{position:absolute;right:4px;top:4px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:28px;height:28px}
+.addtile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;aspect-ratio:1;border:1.5px dashed var(--line);
+  border-radius:8px;color:var(--muted);font-size:.8rem;cursor:pointer;background:none}
+.addtile input{display:none}
+
+.list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.list li + li{border-top:1px solid var(--line)}
+.list button{width:100%;text-align:left;background:none;border:0;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.list .main{flex:1;min-width:0}
+.list .t{display:block;font-family:var(--serif);font-size:1.12rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .s{display:block;font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .chev{color:var(--muted)}
+h2.group{font:600 .78rem/1 var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h3{margin:0 0 6px;font:600 1.15rem var(--serif)}
+.card ol{padding-left:1.2em;margin:6px 0}
+.card li{margin:4px 0}
+.status{font-size:.9rem}
+.status.ok{color:var(--ok)} .status.err{color:var(--danger)}
+
+.preview{font-family:var(--serif);font-size:1.15rem;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-height:240px}
+.preview img{max-width:100%}
+.preview h1,.preview h2,.preview h3{line-height:1.2}
+.preview blockquote{margin:0;padding-left:12px;border-left:3px solid var(--line);color:var(--muted)}
+
+#busy{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:24px}
+#busy .box{background:var(--bg);border-radius:14px;padding:20px 22px;max-width:320px;width:100%;text-align:center}
+.spinner{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--ink);border-radius:50%;margin:0 auto 10px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#toast{position:fixed;left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;max-width:520px;margin:0 auto;
+  background:var(--ink);color:var(--bg);border-radius:10px;padding:12px 14px;font-size:.92rem;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <button class="back" id="back" hidden>‹ Back</button>
+  <h1 id="screen-title">Site Editor</h1>
+</header>
+
+<main>
+
+  <!-- ===== SETUP ===== -->
+  <section id="setup" hidden>
+    <p class="serif" style="font-size:1.2rem">Connect this editor to your website's GitHub repository.</p>
+    <div class="card small">
+      <h3>Make a key for this phone</h3>
+      <ol>
+        <li><strong>Add this page to your Home Screen first</strong> (Share → Add to Home Screen) and open it from there. The Home Screen app keeps its own storage, so paste the key there.</li>
+        <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → new fine-grained token</a>.</li>
+        <li>Name it “Phone editor”. Pick an expiration (a year is fine).</li>
+        <li>Repository access: <strong>Only select repositories</strong> → <code>website-source</code> (the private repo with the site's source).</li>
+        <li>Permissions → Repository permissions: <strong>Contents: Read and write</strong>. Optionally <strong>Actions: Read-only</strong> so the app can tell you when the site is live.</li>
+        <li>Generate, copy, and paste it below.</li>
+      </ol>
+      <p class="muted" style="margin:6px 0 0">The key stays on this phone only. If you lose the phone, delete the token on GitHub and it stops working instantly.</p>
+    </div>
+    <label class="field"><span>GitHub token</span>
+      <input type="password" id="token-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
+    </label>
+    <button class="btn primary big" id="token-save">Connect</button>
+    <p class="status" id="token-status"></p>
+  </section>
+
+  <!-- ===== WRITE ===== -->
+  <section id="write" hidden>
+    <label class="field"><span>Title</span>
+      <input type="text" class="title" id="w-title" placeholder="Post title" autocapitalize="words">
+    </label>
+    <label class="field"><span>Date</span>
+      <input type="date" id="w-date">
+    </label>
+    <label class="field"><span>Section</span>
+      <select id="w-section"></select>
+    </label>
+    <div class="card" id="ns-card" hidden>
+      <h3>New section</h3>
+      <label class="field"><span>Name</span>
+        <input type="text" id="ns-title" placeholder="e.g. Japan 2027" autocapitalize="words">
+      </label>
+      <label class="field" style="margin-top:10px"><span>Web address</span>
+        <div class="row" style="flex-wrap:nowrap;gap:4px"><span class="muted small">gracefanson.com/</span><input type="text" id="ns-slug" autocapitalize="off" spellcheck="false" placeholder="japan2027"></div>
+      </label>
+      <label class="check"><input type="checkbox" id="ns-protected" checked> Password protected (same password as the family blog)</label>
+      <label class="check"><input type="checkbox" id="ns-menu"> Show in the menu at the top of the site</label>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="ns-create">Create section</button>
+        <button class="btn" id="ns-cancel">Cancel</button>
+      </div>
+    </div>
+    <div>
+      <label class="field"><span>Photos <em class="muted" style="text-transform:none;letter-spacing:0">shown at the top, in this order</em></span></label>
+      <div class="thumbs" id="w-photos"></div>
+    </div>
+    <div>
+      <label class="field"><span>Text</span></label>
+      <div class="toolbar" data-for="w-body">
+        <button type="button" data-fmt="bold" aria-label="Bold"><b>B</b></button>
+        <button type="button" data-fmt="italic" aria-label="Italic"><i>I</i></button>
+        <button type="button" data-fmt="heading" aria-label="Heading">H</button>
+        <button type="button" data-fmt="list" aria-label="Bulleted list">•</button>
+        <button type="button" data-fmt="link" aria-label="Link">Link</button>
+        <span class="sp"></span>
+        <button type="button" data-preview="w" aria-pressed="false">Preview</button>
+      </div>
+      <textarea id="w-body" placeholder="Write here. Leave a blank line between paragraphs."></textarea>
+      <div class="preview" id="w-preview" hidden></div>
+    </div>
+    <button class="btn primary big" id="w-publish">Publish post</button>
+    <div class="row spread small">
+      <span class="muted" id="w-saved">Drafts save on this phone as you type.</span>
+      <button class="btn" id="w-discard" style="padding:6px 10px">Discard draft</button>
+    </div>
+    <div class="card" id="w-result" hidden></div>
+  </section>
+
+  <!-- ===== EDIT: list ===== -->
+  <section id="files" hidden>
+    <input type="search" id="f-search" placeholder="Search posts and pages">
+    <div id="f-list"><p class="muted">Loading…</p></div>
+  </section>
+
+  <!-- ===== EDIT: one file ===== -->
+  <section id="file" hidden>
+    <p class="small muted" id="e-path" style="word-break:break-all"></p>
+    <div class="toolbar" data-for="e-text">
+      <button type="button" data-fmt="bold" aria-label="Bold"><b>B</b></button>
+      <button type="button" data-fmt="italic" aria-label="Italic"><i>I</i></button>
+      <button type="button" data-fmt="link" aria-label="Link">Link</button>
+      <span class="sp"></span>
+      <button type="button" data-preview="e" aria-pressed="false" id="e-prevbtn">Preview</button>
+    </div>
+    <textarea id="e-text" class="code" autocapitalize="sentences" spellcheck="true"></textarea>
+    <div class="preview" id="e-preview" hidden></div>
+    <button class="btn primary big" id="e-save">Save changes</button>
+    <div class="row">
+      <a class="btn" id="e-view" target="_blank" rel="noopener" hidden>View on site</a>
+      <button class="btn" id="e-photos" hidden>Photos for this post</button>
+      <button class="btn danger" id="e-delete" hidden>Delete post</button>
+    </div>
+    <div class="card" id="e-result" hidden></div>
+  </section>
+
+  <!-- ===== PHOTOS: folders ===== -->
+  <section id="folders" hidden>
+    <p class="muted small">Pottery pages and blog galleries show every photo in their folder, so adding a photo here adds it to the page.</p>
+    <button class="btn" id="p-new">+ New folder</button>
+    <div id="p-list"><p class="muted">Loading…</p></div>
+  </section>
+
+  <!-- ===== PHOTOS: one folder ===== -->
+  <section id="folder" hidden>
+    <p class="small muted" id="d-path" style="word-break:break-all"></p>
+    <div class="thumbs" id="d-grid"></div>
+    <div class="card" id="d-result" hidden></div>
+  </section>
+
+  <!-- ===== SETTINGS ===== -->
+  <section id="settings" hidden>
+    <div class="card">
+      <h3>Connection</h3>
+      <p class="status" id="s-status">Checking…</p>
+      <p class="small muted" style="margin:6px 0 0">Repository: <code>gfanson/website-source</code> (private), branch <code>main</code>. Every save is a commit there.</p>
+    </div>
+    <div class="row">
+      <a class="btn" href="https://github.com/gfanson/website-source/commits/main" target="_blank" rel="noopener">Recent changes</a>
+      <a class="btn" href="/" target="_blank" rel="noopener">Open website</a>
+    </div>
+    <div class="card">
+      <h3>Sections</h3>
+      <div id="s-sections"><p class="muted small">Loading…</p></div>
+      <p class="small muted" style="margin:8px 0 0">To add a section, pick “+ New section…” under Section on the Write tab.</p>
+    </div>
+    <div class="card" id="s-result" hidden></div>
+    <button class="btn danger" id="s-forget">Forget token on this phone</button>
+    <p class="small muted">Lost your phone? Delete the token at github.com → Settings → Developer settings → Personal access tokens, and it stops working everywhere.</p>
+  </section>
+
+</main>
+
+<nav class="tabs" id="tabs" hidden>
+  <button data-tab="write"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>Write</button>
+  <button data-tab="files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>Edit</button>
+  <button data-tab="folders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>Photos</button>
+  <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+</nav>
+
+<div id="busy" hidden><div class="box"><div class="spinner"></div><div id="busy-text">Working…</div></div></div>
+<div id="toast" hidden role="status"></div>
+
+<script>
+'use strict';
+/* ---------- Constants ---------- */
+const OWNER = 'gfanson', REPO = 'website-source', BRANCH = 'main';   // private source repo; its workflow publishes to gfanson.github.io
+const API = 'https://api.github.com';
+const SECTIONS_PATH = '_data/sections.json';       // list of blog sections (slug, title, protected, menu)
+const DEFAULT_SECTION = 'europe2025';              // posts directly in _posts/ belong to this one
+const POST_IMG_ROOT = 'assets/images/Europe';      // family-blog posts get assets/images/Europe/blogN/
+const IMG_ROOT = 'assets/images';
+const MAX_PX = 2000, JPEG_Q = 0.85;               // photos are shrunk to this before upload
+const TEXT_EXT = /\.(md|markdown|html|yml|yaml|css|txt|json)$/i;
+const IMG_EXT = /\.(jpe?g|png|gif|webp|heic)$/i;
+
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} },
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let token = store.get('gh_token');
+
+/* ---------- Small storage for draft photos (IndexedDB) ---------- */
+const idb = {
+  db: null,
+  open(){
+    if (this.db) return Promise.resolve(this.db);
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('site-editor', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => { this.db = r.result; res(r.result); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async get(k){
+    try { const db = await this.open();
+      return await new Promise((res, rej) => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    } catch(e){ return undefined; }
+  },
+  async set(k, v){
+    try { const db = await this.open();
+      await new Promise((res, rej) => { const t = db.transaction('kv','readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); });
+    } catch(e){}
+  },
+};
+
+/* ---------- GitHub API ---------- */
+async function gh(path, { method = 'GET', body } = {}){
+  const headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  if (body) headers['Content-Type'] = 'application/json';
+  let res;
+  try { res = await fetch(API + path, { method, headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined }); }
+  catch(e){ throw new Error('No connection to GitHub. Check your internet and try again.'); }
+  if (!res.ok){
+    let msg = res.status + ' ' + res.statusText;
+    try { const j = await res.json(); if (j.message) msg = j.message; } catch(e){}
+    if (res.status === 401) msg = 'GitHub did not accept the token (it may have expired). Go to Settings and connect again.';
+    if (res.status === 403 && /Resource not accessible/i.test(msg)) msg = 'The token is missing a permission (it needs Contents: Read and write on this repository).';
+    const err = new Error(msg); err.status = res.status; throw err;
+  }
+  return res.status === 204 ? null : res.json();
+}
+const repo = p => `/repos/${OWNER}/${REPO}${p}`;
+const encPath = p => p.split('/').map(encodeURIComponent).join('/');
+
+let tree = null;  // every file and folder in the repo, from one API call
+async function loadTree(force){
+  if (tree && !force) return tree;
+  const t = await gh(repo(`/git/trees/${BRANCH}?recursive=1`));
+  tree = t.tree;
+  return tree;
+}
+
+let sections = null;
+async function loadSections(force){
+  if (sections && !force) return sections;
+  try { sections = JSON.parse((await readFile(SECTIONS_PATH)).text); }
+  catch(e){
+    if (e.status !== 404) throw e;
+    sections = [{ slug: DEFAULT_SECTION, title: 'Family Blog', protected: true, menu: false }];
+  }
+  return sections;
+}
+const sectionTitle = slug => ((sections || []).find(s => s.slug === slug) || {}).title || slug;
+const postSection = path => (path.match(/^_posts\/([^/]+)\//) || [])[1] || DEFAULT_SECTION;
+
+function b64ToBytes(b){ const bin = atob(b.replace(/\s/g,'')); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+
+async function readFile(path){
+  const j = await gh(repo(`/contents/${encPath(path)}?ref=${BRANCH}`));
+  let b64 = j.content;
+  if (!b64 && j.sha){ b64 = (await gh(repo(`/git/blobs/${j.sha}`))).content; } // files over 1 MB
+  return { text: new TextDecoder().decode(b64ToBytes(b64 || '')), sha: j.sha };
+}
+
+// Git's own id for a file's contents, so we can tell whether a file changed under us.
+async function gitSha(text){
+  const body = new TextEncoder().encode(text), head = new TextEncoder().encode(`blob ${body.length}\0`);
+  const all = new Uint8Array(head.length + body.length); all.set(head); all.set(body, head.length);
+  const d = await crypto.subtle.digest('SHA-1', all);
+  return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+/* One commit containing any number of files.
+   changes: [{path, text}] | [{path, base64}] | [{path, delete:true}] */
+async function commitFiles(message, changes, onProgress, attempt = 0){
+  const ref = await gh(repo(`/git/ref/heads/${BRANCH}`));
+  const head = ref.object.sha;
+  const base = await gh(repo(`/git/commits/${head}`));
+  const entries = [];
+  let done = 0;
+  for (const c of changes){
+    if (c.delete){ entries.push({ path: c.path, mode: '100644', type: 'blob', sha: null }); continue; }
+    const blob = await gh(repo('/git/blobs'), { method: 'POST',
+      body: c.base64 != null ? { content: c.base64, encoding: 'base64' } : { content: c.text, encoding: 'utf-8' } });
+    entries.push({ path: c.path, mode: '100644', type: 'blob', sha: blob.sha });
+    done++; onProgress && onProgress(done, changes.length);
+  }
+  const newTree = await gh(repo('/git/trees'), { method: 'POST', body: { base_tree: base.tree.sha, tree: entries } });
+  const commit = await gh(repo('/git/commits'), { method: 'POST', body: { message, tree: newTree.sha, parents: [head] } });
+  try {
+    await gh(repo(`/git/refs/heads/${BRANCH}`), { method: 'PATCH', body: { sha: commit.sha } });
+  } catch(e){
+    // Someone (e.g. you, on your laptop) pushed in the meantime: rebuild on top of the new version.
+    if (e.status === 422 && attempt < 2) return commitFiles(message, changes, onProgress, attempt + 1);
+    throw e;
+  }
+  tree = null;
+  return commit.sha;
+}
+
+/* Tell the user when the site's GitHub Actions build for this commit has finished
+   (needs Actions: read; otherwise just estimates). */
+async function watchBuild(sha, el, url){
+  const link = url ? ` <a href="${esc(url)}" target="_blank" rel="noopener">Open it</a>` : '';
+  el.innerHTML = `<p class="status ok">Saved</p><p class="small muted">The website is rebuilding. This usually takes a minute or two.</p>`;
+  const start = Date.now();
+  while (Date.now() - start < 420000){
+    await sleep(8000);
+    if (!el.isConnected || el.hidden) return;
+    let run;
+    try { run = ((await gh(repo(`/actions/runs?head_sha=${sha}&per_page=1`))).workflow_runs || [])[0]; }
+    catch(e){ el.innerHTML = `<p class="status ok">Saved</p><p class="small muted">The site updates within a couple of minutes.${link}</p>`; return; }
+    if (!run || run.status !== 'completed') continue;
+    if (run.conclusion === 'success'){ el.innerHTML = `<p class="status ok">Live on the website${link}</p>`; return; }
+    el.innerHTML = `<p class="status err">Saved, but the website build failed.</p><p class="small muted">The last working version stays online. <a href="${esc(run.html_url)}" target="_blank" rel="noopener">See what went wrong</a></p>`;
+    return;
+  }
+  el.innerHTML = `<p class="status ok">Saved</p><p class="small muted">Still rebuilding. Check again in a minute.${link}</p>`;
+}
+
+/* ---------- Photos ---------- */
+function loadImage(src){
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Could not open that photo.')); i.src = src; });
+}
+// Shrinks a photo to MAX_PX on its long side and re-encodes as JPEG (the browser applies the photo's rotation).
+async function toJpeg(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImage(url);
+    const s = Math.min(1, MAX_PX / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', JPEG_Q));
+    c.width = c.height = 0;
+    if (!blob) throw new Error('Could not convert that photo.');
+    return blob;
+  } finally { URL.revokeObjectURL(url); }
+}
+function blobToBase64(b){
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+}
+async function processFiles(files, label){
+  const out = [];
+  for (let i = 0; i < files.length; i++){
+    busy(`${label} ${i + 1} of ${files.length}…`);
+    out.push(await toJpeg(files[i]));
+  }
+  return out;
+}
+
+/* ---------- Text helpers ---------- */
+function slugify(s){
+  return s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
+}
+const yamlStr = s => '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+function today(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function stamp(){ const d = new Date(), p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; }
+
+// Where a file shows up on the website, when we can tell.
+function siteUrl(path, text){
+  const m = path.match(/^_posts\/(?:[^/]+\/)?\d{4}-\d{2}-\d{2}-(.+)\.(md|markdown|html)$/);
+  if (m){
+    const c = text && text.match(/^---[\s\S]*?^category:\s*["']?([^"'\s]+)/m);
+    return `/${c ? c[1] : postSection(path)}/${m[1]}/`;
+  }
+  const pl = text && text.match(/^---[\s\S]*?^permalink:\s*["']?([^"'\s]+)/m);
+  if (pl) return pl[1];
+  if (path === 'index.md' || path === 'index.html') return '/';
+  return null;
+}
+function postTitle(path){
+  const m = path.match(/^_posts\/(?:[^/]+\/)?(\d{4}-\d{2}-\d{2})-(.+)\.\w+$/);
+  if (!m) return { title: path.split('/').pop(), sub: path };
+  const t = m[2].replace(/-/g, ' ');
+  return { title: t.charAt(0).toUpperCase() + t.slice(1), sub: new Date(m[1] + 'T12:00').toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' }) };
+}
+
+/* Tiny Markdown preview (approximate: the website's own renderer has the final say). */
+function mdPreview(src){
+  src = src.replace(/^---\n[\s\S]*?\n---\n?/, '')        // front matter
+           .replace(/\{%[\s\S]*?%\}|\{\{[\s\S]*?\}\}/g, '') // Liquid tags
+           .split('\n').filter(l => !/^\s*<\/?[a-z][^>]*>\s*$/i.test(l)).join('\n'); // lines that are only HTML tags
+  const safe = u => /^\s*javascript:/i.test(u) ? '#' : u;
+  const inline = s => esc(s)
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, a, u) => `<img alt="${a}" src="${safe(u)}">`)
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => `<a href="${safe(u)}" target="_blank" rel="noopener">${t}</a>`)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
+    .replace(/(^|[\s(])_([^_]+)_(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
+  return src.split(/\n\s*\n/).map(b => b.replace(/^\n+|\s+$/g, '')).filter(Boolean).map(b => {
+    const lines = b.split('\n');
+    let m;
+    if ((m = b.match(/^(#{1,6})\s+(.*)$/)) && lines.length === 1) return `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`;
+    if (/^(-{3,}|\*{3,})$/.test(b)) return '<hr>';
+    if (lines.every(l => /^\s*[-*+]\s/.test(l))) return '<ul>' + lines.map(l => `<li>${inline(l.replace(/^\s*[-*+]\s/, ''))}</li>`).join('') + '</ul>';
+    if (lines.every(l => /^\s*\d+\.\s/.test(l))) return '<ol>' + lines.map(l => `<li>${inline(l.replace(/^\s*\d+\.\s/, ''))}</li>`).join('') + '</ol>';
+    if (lines.every(l => /^>/.test(l))) return `<blockquote>${inline(lines.map(l => l.replace(/^>\s?/, '')).join(' '))}</blockquote>`;
+    return '<p>' + lines.map((l, i) => inline(l.replace(/\s+$/, '')) + (i < lines.length - 1 ? (/ {2}$/.test(l) ? '<br>' : ' ') : '')).join('') + '</p>';
+  }).join('\n') || '<p class="muted">Nothing to preview yet.</p>';
+}
+
+/* ---------- UI plumbing ---------- */
+let toastTimer;
+function toast(msg, ms = 4000){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, ms); }
+function busy(msg){ if (msg === false){ $('#busy').hidden = true; return; } $('#busy-text').textContent = msg; $('#busy').hidden = false; }
+async function guarded(fn){
+  try { await fn(); }
+  catch(e){ console.error(e); busy(false); toast(e.message || String(e), 7000); }
+  finally { busy(false); }
+}
+
+const SCREENS = ['setup', 'write', 'files', 'file', 'folders', 'folder', 'settings'];
+const TITLES = { setup: 'Connect', write: 'New post', files: 'Edit', folders: 'Photos', settings: 'Settings' };
+const PARENT = { file: 'files', folder: 'folders' };
+let current = null, backHandler = null;
+
+function show(name, title){
+  if (current === 'file' && name !== 'file' && fileDirty() && !confirm('Leave without saving your changes?')) return false;
+  current = name;
+  SCREENS.forEach(s => $('#' + s).hidden = s !== name);
+  $('#screen-title').textContent = title || TITLES[name] || '';
+  $('#back').hidden = !PARENT[name];
+  const tab = PARENT[name] || name;
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === tab ? 'true' : 'false'));
+  $('#tabs').hidden = name === 'setup';
+  window.scrollTo(0, 0);
+  return true;
+}
+$('#back').onclick = () => { const p = PARENT[current]; if (p) openTab(p); };
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => openTab(b.dataset.tab));
+
+function openTab(name){
+  if (!show(name)) return;
+  store.set('tab', name);
+  if (name === 'write') initSections();
+  if (name === 'files') renderFiles();
+  if (name === 'folders') renderFolders();
+  if (name === 'settings'){ checkConnection(); renderSectionList(); }
+}
+
+// Formatting buttons
+function wrapSel(ta, before, after, placeholder){
+  const s = ta.selectionStart, e = ta.selectionEnd, sel = ta.value.slice(s, e) || placeholder;
+  ta.setRangeText(before + sel + after, s, e, 'end');
+  if (s === e){ ta.selectionStart = s + before.length; ta.selectionEnd = s + before.length + sel.length; }
+  ta.focus(); ta.dispatchEvent(new Event('input'));
+}
+function prefixLines(ta, prefix){
+  const v = ta.value, s = v.lastIndexOf('\n', ta.selectionStart - 1) + 1, e = ta.selectionEnd;
+  const block = v.slice(s, e).split('\n').map(l => prefix + l).join('\n');
+  ta.setRangeText(block, s, e, 'end'); ta.focus(); ta.dispatchEvent(new Event('input'));
+}
+document.querySelectorAll('.toolbar').forEach(tb => {
+  const ta = $('#' + tb.dataset.for);
+  tb.querySelectorAll('[data-fmt]').forEach(b => {
+    b.addEventListener('mousedown', e => e.preventDefault()); // keep the text selection
+    b.onclick = () => {
+      const f = b.dataset.fmt;
+      if (f === 'bold') wrapSel(ta, '**', '**', 'bold text');
+      if (f === 'italic') wrapSel(ta, '*', '*', 'italic text');
+      if (f === 'heading') prefixLines(ta, '## ');
+      if (f === 'list') prefixLines(ta, '- ');
+      if (f === 'link'){ const u = prompt('Link address (https://…)'); if (u) wrapSel(ta, '[', `](${u.trim()})`, 'link text'); }
+    };
+  });
+});
+document.querySelectorAll('[data-preview]').forEach(b => b.onclick = () => {
+  const k = b.dataset.preview, on = b.getAttribute('aria-pressed') !== 'true';
+  const ta = $(k === 'w' ? '#w-body' : '#e-text'), pv = $(k === 'w' ? '#w-preview' : '#e-preview');
+  b.setAttribute('aria-pressed', on); b.textContent = on ? 'Write' : 'Preview';
+  if (on) pv.innerHTML = mdPreview(ta.value);
+  ta.hidden = on; pv.hidden = !on;
+  b.closest('.toolbar').querySelectorAll('[data-fmt]').forEach(x => x.disabled = on);
+});
+function resetPreview(k){ const b = document.querySelector(`[data-preview="${k}"]`); if (b.getAttribute('aria-pressed') === 'true') b.click(); }
+
+/* ---------- Setup / settings ---------- */
+$('#token-save').onclick = () => guarded(async () => {
+  const v = $('#token-input').value.trim();
+  if (!v) return toast('Paste your GitHub token first.');
+  token = v; busy('Checking the token…');
+  try { await gh(repo('')); await gh(repo(`/git/ref/heads/${BRANCH}`)); }
+  catch(e){ token = null; $('#token-status').className = 'status err'; $('#token-status').textContent = e.status === 404 ? 'That token can’t see the website-source repository. Check “Repository access”.' : e.message; return; }
+  store.set('gh_token', v); $('#token-input').value = '';
+  toast('Connected'); openTab('write');
+});
+async function checkConnection(){
+  const el = $('#s-status'); el.className = 'status'; el.textContent = 'Checking…';
+  try { await gh(repo('')); el.className = 'status ok'; el.textContent = 'Connected to GitHub'; }
+  catch(e){ el.className = 'status err'; el.textContent = e.message; }
+}
+$('#s-forget').onclick = () => {
+  if (!confirm('Remove the GitHub token from this phone? You’ll need to paste it again to edit the site.')) return;
+  store.del('gh_token'); token = null; show('setup');
+};
+
+/* ---------- Write a new post ---------- */
+let wPhotos = []; // [{blob, url}]
+let wSection = DEFAULT_SECTION;
+function saveDraft(){
+  store.set('draft', JSON.stringify({ title: $('#w-title').value, date: $('#w-date').value, body: $('#w-body').value, section: wSection }));
+  $('#w-saved').textContent = 'Draft saved on this phone.';
+}
+
+/* Sections */
+function renderSectionSelect(){
+  const sel = $('#w-section');
+  if (!sections){ sel.innerHTML = '<option>Loading…</option>'; return; }
+  if (!sections.some(s => s.slug === wSection)) wSection = sections[0] ? sections[0].slug : DEFAULT_SECTION;
+  sel.innerHTML = sections.map(s => `<option value="${esc(s.slug)}">${esc(s.title)}${s.protected ? ' (password)' : ''}</option>`).join('')
+    + '<option value="__new">+ New section…</option>';
+  sel.value = wSection;
+}
+async function initSections(){
+  try { await loadSections(); } catch(e){ toast(e.message, 6000); }
+  renderSectionSelect();
+}
+$('#w-section').onchange = e => {
+  if (e.target.value === '__new'){
+    e.target.value = wSection;
+    $('#ns-card').hidden = false; $('#ns-title').value = ''; $('#ns-slug').value = ''; delete $('#ns-slug').dataset.touched;
+    $('#ns-protected').checked = true; $('#ns-menu').checked = false;
+    $('#ns-title').focus();
+    return;
+  }
+  wSection = e.target.value; saveDraft();
+};
+$('#ns-title').addEventListener('input', () => { if (!$('#ns-slug').dataset.touched) $('#ns-slug').value = slugify($('#ns-title').value); });
+$('#ns-slug').addEventListener('input', () => { $('#ns-slug').dataset.touched = 1; });
+$('#ns-cancel').onclick = () => { $('#ns-card').hidden = true; };
+$('#ns-create').onclick = () => guarded(async () => {
+  const title = $('#ns-title').value.trim(), slug = slugify($('#ns-slug').value || title);
+  const isProtected = $('#ns-protected').checked, menu = $('#ns-menu').checked;
+  if (!title) return toast('Give the section a name.');
+  if (!slug) return toast('The web address needs at least one letter or number.');
+  busy('Checking the address is free…');
+  await Promise.all([loadSections(true), loadTree(true)]);
+  const reserved = ['edit', 'assets', 'pages', 'sections', 'feed', 'feed.xml'];
+  const taken = sections.some(s => s.slug === slug) || reserved.includes(slug)
+    || tree.some(e => e.path === slug || e.path === `sections/${slug}.html`)
+    || await fetch(`/${slug}/`, { method: 'HEAD', cache: 'no-store' }).then(r => r.ok, () => false);
+  busy(false);
+  if (taken) return toast(`gracefanson.com/${slug}/ is already used by something on your site. Pick another address.`, 6000);
+  if (!confirm(`Create the section “${title}” at gracefanson.com/${slug}/?${isProtected ? '\n\nIt will be password protected.' : '\n\nAnyone can read it.'}`)) return;
+
+  const list = [...sections, { slug, title, protected: isProtected, menu }];
+  const page = `---\nlayout: section\nsection: ${slug}\ntitle: ${yamlStr(title)}\npermalink: /${slug}/\n---\n\n<!-- Optional: write an intro here. It shows above the list of posts. -->\n`;
+  busy('Creating the section…');
+  const sha = await commitFiles(`New section: ${title}`, [
+    { path: SECTIONS_PATH, text: JSON.stringify(list, null, 2) + '\n' },
+    { path: `sections/${slug}.html`, text: page },
+  ]);
+  sections = list; wSection = slug;
+  renderSectionSelect(); saveDraft();
+  $('#ns-card').hidden = true;
+  const r = $('#w-result'); r.hidden = false; watchBuild(sha, r, `/${slug}/`);
+});
+/* Delete a section (Settings tab) */
+function sectionFiles(slug){
+  const inSection = e => e.type === 'blob' && e.path.startsWith('_posts/') && postSection(e.path) === slug;
+  const posts = tree.filter(inSection).map(e => e.path);
+  const dirs = [`${IMG_ROOT}/${slug}/`].concat(slug === DEFAULT_SECTION ? [POST_IMG_ROOT + '/'] : []);
+  const photos = tree.filter(e => e.type === 'blob' && dirs.some(d => e.path.startsWith(d))).map(e => e.path);
+  const pages = [`sections/${slug}.html`].concat(slug === DEFAULT_SECTION ? ['pages/blog.html'] : [])
+    .filter(p => tree.some(e => e.path === p));
+  return { posts, photos, pages };
+}
+async function renderSectionList(){
+  const box = $('#s-sections');
+  try { await Promise.all([loadSections(), loadTree()]); }
+  catch(e){ box.innerHTML = `<p class="status err">${esc(e.message)}</p>`; return; }
+  if (!sections.length){ box.innerHTML = '<p class="muted small">No sections yet.</p>'; return; }
+  box.innerHTML = sections.map(s => {
+    const n = sectionFiles(s.slug).posts.length;
+    return `<div class="row" style="justify-content:space-between;flex-wrap:nowrap;padding:8px 0;border-top:1px solid var(--line)">
+      <div style="min-width:0"><div>${esc(s.title)}</div>
+        <div class="small muted">/${esc(s.slug)}/ · ${s.protected === false ? 'public' : 'password'} · ${n} post${n === 1 ? '' : 's'}</div></div>
+      <button class="btn danger" data-del="${esc(s.slug)}">Delete</button></div>`;
+  }).join('');
+  box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => deleteSection(b.dataset.del));
+}
+const deleteSection = slug => guarded(async () => {
+  busy('Checking the section…');
+  await Promise.all([loadSections(true), loadTree(true)]);
+  busy(false);
+  const s = sections.find(x => x.slug === slug);
+  if (!s) return renderSectionList();
+  const { posts, photos, pages } = sectionFiles(slug);
+  const what = posts.length || photos.length
+    ? `This deletes the section page, its menu link, its ${posts.length} post${posts.length === 1 ? '' : 's'} and ${photos.length} photo${photos.length === 1 ? '' : 's'}.`
+    : 'This deletes the section page and its menu link. It has no posts.';
+  const msg = `Delete the section “${s.title}” (gracefanson.com/${slug}/)?\n\n${what}\n\nYou can get it back from GitHub’s history if you need to.`;
+  if (posts.length){
+    const typed = prompt(`${msg}\n\nTo confirm, type the section name: ${s.title}`);
+    if (typed === null) return;
+    if (typed.trim().toLowerCase() !== s.title.trim().toLowerCase()) return toast('The name didn’t match, so nothing was deleted.');
+  } else if (!confirm(msg)) return;
+
+  const list = sections.filter(x => x.slug !== slug);
+  const changes = [{ path: SECTIONS_PATH, text: JSON.stringify(list, null, 2) + '\n' }]
+    .concat([...pages, ...posts, ...photos].map(path => ({ path, delete: true })));
+  busy('Deleting…');
+  const sha = await commitFiles(`Delete section: ${s.title} (from phone)`, changes);
+  busy(false);
+  sections = list; renderSectionSelect(); await renderSectionList();
+  toast('Section deleted.');
+  const r = $('#s-result'); r.hidden = false; watchBuild(sha, r);
+});
+
+async function saveDraftPhotos(){ await idb.set('draftPhotos', wPhotos.map(p => p.blob)); }
+async function loadDraft(){
+  let d = {}; try { d = JSON.parse(store.get('draft') || '{}'); } catch(e){}
+  $('#w-title').value = d.title || ''; $('#w-date').value = d.date || today(); $('#w-body').value = d.body || '';
+  wSection = d.section || store.get('lastSection') || DEFAULT_SECTION; renderSectionSelect();
+  const blobs = await idb.get('draftPhotos');
+  wPhotos = (blobs || []).map(b => ({ blob: b, url: URL.createObjectURL(b) }));
+  renderWPhotos(); autosize($('#w-body'));
+}
+['#w-title', '#w-date', '#w-body'].forEach(s => $(s).addEventListener('input', saveDraft));
+function autosize(ta){ ta.style.height = 'auto'; ta.style.height = Math.max(240, ta.scrollHeight + 4) + 'px'; }
+$('#w-body').addEventListener('input', e => autosize(e.target));
+
+function renderWPhotos(){
+  const g = $('#w-photos'); g.innerHTML = '';
+  wPhotos.forEach((p, i) => {
+    const d = document.createElement('div'); d.className = 'thumb';
+    d.innerHTML = `<img src="${p.url}" alt=""><span class="n">${i + 1}</span><button class="x" aria-label="Remove photo">×</button>
+      <div class="ctl"><button aria-label="Move earlier" ${i === 0 ? 'disabled style="visibility:hidden"' : ''}>‹</button><button aria-label="Move later" ${i === wPhotos.length - 1 ? 'disabled style="visibility:hidden"' : ''}>›</button></div>`;
+    d.querySelector('.x').onclick = () => { URL.revokeObjectURL(p.url); wPhotos.splice(i, 1); renderWPhotos(); saveDraftPhotos(); };
+    const [l, r] = d.querySelectorAll('.ctl button');
+    l.onclick = () => { [wPhotos[i-1], wPhotos[i]] = [wPhotos[i], wPhotos[i-1]]; renderWPhotos(); saveDraftPhotos(); };
+    r.onclick = () => { [wPhotos[i+1], wPhotos[i]] = [wPhotos[i], wPhotos[i+1]]; renderWPhotos(); saveDraftPhotos(); };
+    g.appendChild(d);
+  });
+  const add = document.createElement('label'); add.className = 'addtile';
+  add.innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg>Add photos<input type="file" accept="image/*" multiple>`;
+  add.querySelector('input').onchange = e => guarded(async () => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    const blobs = await processFiles(files, 'Preparing photo');
+    blobs.forEach(b => wPhotos.push({ blob: b, url: URL.createObjectURL(b) }));
+    renderWPhotos(); await saveDraftPhotos();
+  });
+  g.appendChild(add);
+}
+
+function clearDraft(){
+  store.del('draft'); wPhotos.forEach(p => URL.revokeObjectURL(p.url)); wPhotos = [];
+  idb.set('draftPhotos', []);
+  $('#w-title').value = ''; $('#w-date').value = today(); $('#w-body').value = '';
+  renderWPhotos(); autosize($('#w-body')); resetPreview('w');
+  $('#w-saved').textContent = 'Drafts save on this phone as you type.';
+}
+$('#w-discard').onclick = () => { if (confirm('Throw away this draft and its photos?')) { clearDraft(); $('#w-result').hidden = true; } };
+
+$('#w-publish').onclick = () => guarded(async () => {
+  const title = $('#w-title').value.trim(), date = $('#w-date').value, body = $('#w-body').value.trim();
+  if (!title) return toast('Give your post a title first.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return toast('Pick a date for the post.');
+  if (date > today()) return toast('That date is in the future. The website hides future-dated posts until that day.', 6000);
+  const slug = slugify(title);
+  if (!slug) return toast('The title needs at least one letter or number.');
+  const section = wSection;
+  if (!sections || !sections.some(s => s.slug === section)) return toast('Pick a section for the post.');
+  const path = section === DEFAULT_SECTION ? `_posts/${date}-${slug}.md` : `_posts/${section}/${date}-${slug}.md`;
+  const extra = wPhotos.length ? ` with ${wPhotos.length} photo${wPhotos.length > 1 ? 's' : ''}` : '';
+  if (!confirm(`Publish “${title}”${extra} to ${sectionTitle(section)}?`)) return;
+
+  busy('Getting ready…');
+  await loadTree(true);
+  if (tree.some(e => e.path === path)) { busy(false); return toast('There’s already a post with this title on this date. Change the title a little.', 6000); }
+
+  const changes = [];
+  let folder = null;
+  if (wPhotos.length){
+    if (section === DEFAULT_SECTION){ // family blog keeps its numbered folders: Europe/blog31, blog32…
+      const prefix = POST_IMG_ROOT + '/blog';
+      const nums = tree.filter(e => e.type === 'tree' && e.path.startsWith(prefix)).map(e => Number(e.path.slice(prefix.length))).filter(Number.isInteger);
+      folder = `${prefix}${Math.max(0, ...nums) + 1}`;
+    } else {
+      folder = `${IMG_ROOT}/${section}/${date}-${slug}`;
+    }
+    for (let i = 0; i < wPhotos.length; i++){
+      busy(`Getting photo ${i + 1} of ${wPhotos.length} ready…`);
+      changes.push({ path: `${folder}/${String(i + 1).padStart(2, '0')}.jpg`, base64: await blobToBase64(wPhotos[i].blob) });
+    }
+  }
+  const gallery = folder ? `<div class="gallery-stacked">
+    {% for image in site.static_files %}
+        {% if image.path contains '${folder}/' %}
+            <img src="{{ image.path }}" alt="${esc(title)}">
+        {% endif %}
+    {% endfor %}
+</div>
+
+` : '';
+  const text = `---\nlayout: post\ntitle: ${yamlStr(title)}\ndate: ${date}\ncategory: ${section}\n---\n\n${gallery}${body}\n`;
+  changes.unshift({ path, text });
+
+  busy('Uploading…');
+  const sha = await commitFiles(`New post: ${title}`, changes, (d, n) => busy(`Uploading ${d} of ${n}…`));
+  busy(false);
+  store.set('lastSection', section);
+  clearDraft();
+  const url = `/${section}/${slug}/`;
+  const r = $('#w-result'); r.hidden = false;
+  watchBuild(sha, r, url);
+  r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+/* ---------- Edit existing files ---------- */
+function groupFor(p){
+  if (p.startsWith('_posts/')) return 'Posts: ' + sectionTitle(postSection(p));
+  if (p === 'index.md' || p === 'index.html' || p.startsWith('pages/') || p.startsWith('sections/')) return 'Pages';
+  if (p === '_config.yml' || /^(_layouts|_includes|_data|assets\/css)\//.test(p)) return 'Site settings & design';
+  return 'Other files';
+}
+async function renderFiles(){
+  const box = $('#f-list');
+  if (!tree) box.innerHTML = '<p class="muted">Loading…</p>';
+  try { await Promise.all([loadTree(), loadSections()]); } catch(e){ box.innerHTML = `<p class="status err">${esc(e.message)}</p>`; return; }
+  const q = $('#f-search').value.trim().toLowerCase();
+  const files = tree.filter(e => e.type === 'blob' && TEXT_EXT.test(e.path) && !e.path.startsWith('edit/') && !e.path.startsWith('_site/'));
+  const groups = {};
+  for (const f of files){
+    const info = f.path.startsWith('_posts/') ? postTitle(f.path) : { title: f.path.split('/').pop(), sub: f.path };
+    if (q && !(info.title + ' ' + f.path).toLowerCase().includes(q)) continue;
+    (groups[groupFor(f.path)] ||= []).push({ path: f.path, ...info });
+  }
+  const postGroups = sections.map(s => 'Posts: ' + s.title);
+  Object.keys(groups).filter(g => g.startsWith('Posts: ')).forEach(g => {
+    groups[g].sort((a, b) => b.path.split('/').pop().localeCompare(a.path.split('/').pop())); // newest first
+    if (!postGroups.includes(g)) postGroups.push(g);
+  });
+  const order = [...postGroups, 'Pages', 'Site settings & design', 'Other files'];
+  box.innerHTML = order.filter(g => groups[g]).map(g => `<h2 class="group">${g}</h2><ul class="list">${
+    groups[g].map(f => `<li><button data-path="${esc(f.path)}"><span class="main"><span class="t">${esc(f.title)}</span><span class="s">${esc(f.sub)}</span></span><span class="chev">›</span></button></li>`).join('')
+  }</ul>`).join('') || '<p class="muted">Nothing matches.</p>';
+  box.querySelectorAll('button[data-path]').forEach(b => b.onclick = () => openFile(b.dataset.path));
+}
+$('#f-search').addEventListener('input', () => renderFiles());
+
+let ed = null; // {path, sha, original}
+const fileDirty = () => ed && $('#e-text').value !== ed.original;
+async function openFile(path){
+  await guarded(async () => {
+    busy('Opening…');
+    const { text, sha } = await readFile(path);
+    busy(false);
+    ed = { path, sha, original: text };
+    const isPost = path.startsWith('_posts/');
+    show('file', isPost ? postTitle(path).title : path.split('/').pop());
+    resetPreview('e');
+    $('#e-path').textContent = path;
+    const ta = $('#e-text'); ta.value = text;
+    $('#e-prevbtn').hidden = !/\.(md|markdown)$/i.test(path);
+    const url = siteUrl(path, text);
+    $('#e-view').hidden = !url; if (url) $('#e-view').href = url;
+    const folder = (text.match(/assets\/images\/[^'"\s{}]+?\/(?=['"])/) || [])[0];
+    $('#e-photos').hidden = !folder; $('#e-photos').onclick = () => openFolder(folder.replace(/\/$/, ''));
+    $('#e-delete').hidden = !isPost;
+    $('#e-result').hidden = true;
+  });
+}
+$('#e-save').onclick = () => guarded(async () => {
+  if (!ed) return;
+  const text = $('#e-text').value;
+  if (!fileDirty()) return toast('No changes to save.');
+  busy('Checking for other changes…');
+  const latest = await readFile(ed.path).catch(() => null);
+  if (latest && latest.sha !== ed.sha){
+    busy(false);
+    if (!confirm('This file changed somewhere else (maybe on your laptop) since you opened it. Save anyway and replace that version?')) return;
+  }
+  busy('Saving…');
+  const sha = await commitFiles(`Edit ${ed.path} (from phone)`, [{ path: ed.path, text }]);
+  ed.original = text; ed.sha = await gitSha(text);
+  busy(false);
+  const r = $('#e-result'); r.hidden = false; watchBuild(sha, r, siteUrl(ed.path, text));
+});
+$('#e-delete').onclick = () => guarded(async () => {
+  if (!ed) return;
+  const t = postTitle(ed.path).title;
+  if (!confirm(`Delete the post “${t}” from the website?\n\nYou can get it back from GitHub’s history if you need to.`)) return;
+  const changes = [{ path: ed.path, delete: true }];
+  // Its photo folder, unless another post also uses it.
+  const folder = ((ed.original.match(/assets\/images\/[^'"\s{}]+?\/(?=['"])/) || [])[0] || '').replace(/\/$/, '');
+  if (folder){
+    busy('Checking its photos…');
+    await loadTree(true);
+    const photos = tree.filter(e => e.type === 'blob' && e.path.startsWith(folder + '/')).map(e => e.path);
+    const others = tree.filter(e => e.type === 'blob' && e.path.startsWith('_posts/') && e.path !== ed.path);
+    const texts = await Promise.all(others.map(e => readFile(e.path).then(f => f.text, () => '')));
+    const shared = texts.some(x => x.includes(folder + '/'));
+    busy(false);
+    if (photos.length && !shared && confirm(`Also delete its ${photos.length} photo${photos.length > 1 ? 's' : ''}?\n\nOK deletes them. Cancel keeps them in the Photos tab.`))
+      photos.forEach(path => changes.push({ path, delete: true }));
+  }
+  busy('Deleting…');
+  await commitFiles(`Delete post ${ed.path} (from phone)`, changes);
+  ed = null; busy(false); toast('Post deleted.'); openTab('files');
+});
+$('#e-text').addEventListener('keydown', e => { // Tab key inserts spaces in code files
+  if (e.key === 'Tab'){ e.preventDefault(); e.target.setRangeText('    ', e.target.selectionStart, e.target.selectionEnd, 'end'); }
+});
+window.addEventListener('beforeunload', e => { if (fileDirty()) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- Photos ---------- */
+async function renderFolders(){
+  const box = $('#p-list');
+  if (!tree) box.innerHTML = '<p class="muted">Loading…</p>';
+  try { await loadTree(); } catch(e){ box.innerHTML = `<p class="status err">${esc(e.message)}</p>`; return; }
+  const counts = {};
+  for (const e of tree){
+    if (e.type !== 'blob' || !e.path.startsWith(IMG_ROOT + '/') || !IMG_EXT.test(e.path)) continue;
+    const dir = e.path.slice(0, e.path.lastIndexOf('/'));
+    counts[dir] = (counts[dir] || 0) + 1;
+  }
+  const groups = {};
+  Object.keys(counts).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).forEach(d => {
+    const rest = d.slice(IMG_ROOT.length + 1), parts = rest.split('/');
+    const g = parts.length > 1 ? parts.slice(0, -1).join(' / ') : 'General';
+    (groups[g] ||= []).push({ dir: d, name: parts[parts.length - 1], n: counts[d] });
+  });
+  const pretty = s => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
+  box.innerHTML = Object.keys(groups).sort((a, b) => a === 'Europe' ? 1 : b === 'Europe' ? -1 : a.localeCompare(b)).map(g =>
+    `<h2 class="group">${esc(pretty(g))}</h2><ul class="list">${groups[g].map(f =>
+      `<li><button data-dir="${esc(f.dir)}"><span class="main"><span class="t">${esc(pretty(f.name))}</span><span class="s">${f.n} photo${f.n > 1 ? 's' : ''}</span></span><span class="chev">›</span></button></li>`).join('')}</ul>`
+  ).join('');
+  box.querySelectorAll('button[data-dir]').forEach(b => b.onclick = () => openFolder(b.dataset.dir));
+}
+$('#p-new').onclick = () => {
+  const name = prompt('New folder inside assets/images/ (e.g. pottery/plates or trips/japan):');
+  if (!name) return;
+  const clean = name.split('/').map(s => s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-|-$/g, '')).filter(Boolean).join('/');
+  if (!clean) return toast('Use letters and numbers for the folder name.');
+  openFolder(`${IMG_ROOT}/${clean}`);
+  toast('Add a photo to create the folder.');
+};
+
+let folderPath = null;
+function imgUrl(path){ return '/' + encPath(path); }
+// The source repo is private, so photos that aren't on the public site (new ones, and
+// protected sections' photos, which the site only serves encrypted) come through the API.
+async function repoImageUrl(path){
+  await loadTree();
+  const e = tree.find(x => x.path === path);
+  if (!e) throw new Error('not found');
+  const b = await gh(repo(`/git/blobs/${e.sha}`));
+  return URL.createObjectURL(new Blob([b64ToBytes(b.content)]));
+}
+async function openFolder(dir){
+  folderPath = dir;
+  if (!show('folder', dir.split('/').pop())) return;
+  $('#d-path').textContent = dir + '/';
+  $('#d-result').hidden = true;
+  await renderFolder();
+}
+async function renderFolder(){
+  const g = $('#d-grid'); g.innerHTML = '<p class="muted">Loading…</p>';
+  try { await loadTree(); } catch(e){ g.innerHTML = `<p class="status err">${esc(e.message)}</p>`; return; }
+  const imgs = tree.filter(e => e.type === 'blob' && e.path.startsWith(folderPath + '/') && !e.path.slice(folderPath.length + 1).includes('/') && IMG_EXT.test(e.path))
+                   .map(e => e.path).sort();
+  g.innerHTML = '';
+  const add = document.createElement('label'); add.className = 'addtile';
+  add.innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg>Add photos<input type="file" accept="image/*" multiple>`;
+  add.querySelector('input').onchange = e => uploadToFolder([...e.target.files], e.target);
+  g.appendChild(add);
+  imgs.forEach(p => {
+    const d = document.createElement('div'); d.className = 'thumb';
+    d.innerHTML = `<img loading="lazy" alt=""><button class="x" aria-label="Delete photo">×</button>`;
+    const img = d.querySelector('img');
+    img.onerror = () => { if (!img.dataset.raw){ img.dataset.raw = 1; repoImageUrl(p).then(u => { img.src = u; }).catch(() => {}); } };
+    img.src = imgUrl(p);
+    d.querySelector('.x').onclick = () => guarded(async () => {
+      if (!confirm(`Delete ${p.split('/').pop()} from the website?`)) return;
+      busy('Deleting…');
+      const sha = await commitFiles(`Delete ${p} (from phone)`, [{ path: p, delete: true }]);
+      busy(false); await renderFolder();
+      const r = $('#d-result'); r.hidden = false; watchBuild(sha, r);
+    });
+    g.appendChild(d);
+  });
+}
+function uploadToFolder(files, input){
+  return guarded(async () => {
+    input.value = '';
+    if (!files.length) return;
+    const blobs = await processFiles(files, 'Preparing photo');
+    const s = stamp();
+    // "photo-…" names sort after camera names like IMG_1234, so new photos land at the end of a gallery.
+    const changes = [];
+    for (let i = 0; i < blobs.length; i++){
+      busy(`Getting photo ${i + 1} of ${blobs.length} ready…`);
+      changes.push({ path: `${folderPath}/photo-${s}-${String(i + 1).padStart(2, '0')}.jpg`, base64: await blobToBase64(blobs[i]) });
+    }
+    const sha = await commitFiles(`Add ${blobs.length} photo${blobs.length > 1 ? 's' : ''} to ${folderPath} (from phone)`, changes, (d, n) => busy(`Uploading ${d} of ${n}…`));
+    busy(false); await renderFolder();
+    const r = $('#d-result'); r.hidden = false; watchBuild(sha, r);
+  });
+}
+
+/* ---------- Start ---------- */
+loadDraft();
+if (!token) show('setup');
+else {
+  const t = store.get('tab');
+  openTab(['write', 'files', 'folders', 'settings'].includes(t) ? t : 'write');
+}
+</script>
+</body>
+</html>

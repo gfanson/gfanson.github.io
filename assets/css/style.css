@@ -1,0 +1,350 @@
+/* ===== GENERAL ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+body {
+    font-family: 'EB Garamond', 'Garamond', serif;
+    line-height: 1.6;
+    color: #000;
+    background-color: #fff;
+    overflow-x: hidden;
+}
+
+/* ===== HEADER ===== */
+header {
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+    padding: 1.5rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo img {
+    height: 50px;
+    width: auto;
+}
+
+nav {
+    margin-left: auto;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+}
+
+nav a {
+    color: #000;
+    text-decoration: none;
+    font-size: 1rem;
+    transition: opacity 0.3s;
+}
+
+nav a:hover {
+    opacity: 0.6;
+}
+
+/* ===== MAIN CONTENT ===== */
+main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+}
+
+/* ===== HOMEPAGE LAYOUT ===== */
+.homepage-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 3rem;
+}
+
+.homepage-text {
+    flex: 1;
+}
+
+.homepage-text h1 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    font-weight: normal;
+}
+
+.homepage-text p {
+    font-size: 1.05rem;
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+
+/* ===== ARCH FRAME IMAGE ===== */
+.arch-frame {
+    width: 350px;
+    height: 520px;
+    border-radius: 150px 150px 0 0;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.arch-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* ===== FOOTER ===== */
+footer {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    font-size: 0.9rem;
+    border-top: 1px solid #ddd;
+    margin-top: 3rem;
+}
+
+/* ===== LINKS ===== */
+a {
+    color: #000;
+    text-decoration: underline;
+}
+
+a:hover {
+    opacity: 0.6;
+}
+
+/* ===== BLOG ===== */
+#password-gate {
+    text-align: center;
+    padding: 3rem 0;
+}
+
+#password-input {
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #000;
+    margin-right: 0.5rem;
+}
+
+#password-gate button {
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    padding: 0.5rem 1.5rem;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+#password-gate button:hover {
+    background-color: #333;
+}
+
+#error-message {
+    color: red;
+    margin-top: 1rem;
+}
+
+.post-preview {
+    margin-bottom: 1.5rem;
+}
+
+.post-preview h2 {
+    font-weight: normal;
+}
+
+.post-content img {
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+}
+
+.post-date {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.post-preview hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin-top: 1.5rem;
+}
+
+/* ===== GALLERY ===== */
+.gallery {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.gallery img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.gallery-masonry {
+    columns: 2;
+    column-gap: 1.5rem;
+}
+
+.gallery-masonry img {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 1.5rem;
+}
+
+.gallery-stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.gallery-stacked img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ===== POTTERY ===== */
+.pottery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+}
+
+.pottery-card {
+    display: block;
+    color: #000;
+    text-decoration: none;
+}
+
+.pottery-card img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.2s;
+}
+
+.pottery-card:hover img {
+    opacity: 0.8;
+}
+
+.pottery-card span {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: #666;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    color: #000;
+}
+
+/* ===== RESEARCH PAGE ===== */
+.video-container {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    padding-bottom: 56.25%;
+    margin: 1.5rem 0;
+}
+
+.video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.pdf-container iframe {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #ddd;
+    margin: 1.5rem 0;
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .header-container {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .logo {
+        flex-shrink: 0;
+    }
+
+    .logo img {
+        height: 30px;
+    }
+
+    nav {
+        margin-left: auto;
+    }
+
+    nav ul {
+        gap: 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .homepage-container {
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .homepage-text h1 {
+        font-size: 1.5rem;
+    }
+
+    .homepage-text p {
+        font-size: 1rem;
+    }
+
+    main {
+        padding: 2rem 1rem;
+    }
+
+    .gallery-masonry {
+        columns: 1;
+    }
+
+    .pottery-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+}
